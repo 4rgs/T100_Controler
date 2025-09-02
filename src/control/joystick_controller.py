@@ -59,15 +59,17 @@ class JoystickController:
         Mezcla diferencial: convierte x,y del joystick a velocidades left/right.
         
         Args:
-            x: Entrada lateral (-1.0 a 1.0)
+            x: Entrada lateral (-1.0 a 1.0, positivo = derecha)
             y: Entrada frontal (-1.0 a 1.0, positivo = adelante)
         
         Returns:
             Tuple con velocidades (left, right) en rango -1.0 a 1.0
         """
-        # Mezcla diferencial estándar
-        left = y + x
-        right = y - x
+        # Mezcla diferencial corregida:
+        # Para ir a la derecha (x > 0): motor izquierdo más rápido
+        # Para ir a la izquierda (x < 0): motor derecho más rápido
+        left = y - x   # Motor izquierdo: adelante - giro derecha
+        right = y + x  # Motor derecho: adelante + giro derecha
         
         # Clamp a rango válido
         left = max(-1.0, min(1.0, left))

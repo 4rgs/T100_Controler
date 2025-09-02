@@ -44,13 +44,13 @@ class ServerConfig:
 # Configuración por defecto del usuario
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),
-        motor_b=MotorPins(enable=26, in1=19, in2=21, invert=False),
-        pwm_frequency=1000
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),
+        motor_b=MotorPins(enable=26, in1=19, in2=21, invert=True),
+        pwm_frequency=2000
     ),
     "joystick": JoystickConfig(
         deadzone=0.03,
-        non_linear_factor=1.0
+        non_linear_factor=1.3
     ),
     "server": ServerConfig(
         host="0.0.0.0",
