@@ -7,6 +7,7 @@ Implementación concreta del driver L298N usando pigpio.
 
 import atexit
 import signal
+import time
 from typing import Optional
 
 import pigpio
@@ -39,6 +40,10 @@ class L298NMotor(MotorInterface):
     
     def set_direction(self, forward: bool, brake: bool = False) -> None:
         """Establece la dirección del motor."""
+        # Primero parar el motor antes de cambiar dirección
+        self.pi.set_PWM_dutycycle(self.pins.enable, 0)
+        time.sleep(0.01)  # Pequeño delay para estabilizar
+        
         if brake:
             self._drive_pins(True, True)
             self.state.direction = MotorDirection.BRAKE
@@ -53,6 +58,8 @@ class L298NMotor(MotorInterface):
         else:
             self._drive_pins(False, True)
             self.state.direction = MotorDirection.BACKWARD
+        
+        time.sleep(0.01)  # Pequeño delay después del cambio
     
     def set_speed(self, speed_percent: float) -> None:
         """Establece la velocidad del motor (0-100%)."""

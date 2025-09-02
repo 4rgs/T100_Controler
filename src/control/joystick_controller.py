@@ -86,7 +86,13 @@ class JoystickController:
         else:
             is_forward = speed > 0.0
             speed_percent = abs(speed) * 100.0
+            
+            # IMPORTANTE: Establecer dirección ANTES que velocidad
+            # Primero parar el motor
+            motor.set_speed(0.0)
+            # Luego cambiar dirección
             motor.set_direction(is_forward)
+            # Finalmente aplicar velocidad
             motor.set_speed(speed_percent)
     
     def update(self, x: float, y: float) -> None:
@@ -123,12 +129,12 @@ class JoystickController:
         self.mix_state.left = left_speed
         self.mix_state.right = right_speed
         
-        # Log para debug
+        # Log detallado para debug
         print(f"[JOY] x={processed_x:.2f} y={processed_y:.2f} -> "
-              f"L={left_speed:.2f} R={right_speed:.2f} "
-              f"A:{motor_a.get_state().direction.value}@{motor_a.get_state().speed_percent:.0f}% "
-              f"B:{motor_b.get_state().direction.value}@{motor_b.get_state().speed_percent:.0f}%",
-              flush=True)
+              f"L={left_speed:.2f} R={right_speed:.2f}")
+        print(f"[MOTOR_A] Dir: {motor_a.get_state().direction.value}, Speed: {motor_a.get_state().speed_percent:.0f}%")
+        print(f"[MOTOR_B] Dir: {motor_b.get_state().direction.value}, Speed: {motor_b.get_state().speed_percent:.0f}%")
+        print("---")
     
     def stop(self) -> None:
         """Detiene todos los motores y resetea el estado."""
