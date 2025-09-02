@@ -42,15 +42,16 @@ class ServerConfig:
 
 
 # Configuración por defecto del usuario
+# IMPORTANTE: Ajustar según el comportamiento real de tus motores
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),
-        motor_b=MotorPins(enable=26, in1=19, in2=21, invert=True),
-        pwm_frequency=2000
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),  # Cambiar si gira al revés
+        motor_b=MotorPins(enable=26, in1=19, in2=21, invert=False),  # Cambiar si gira al revés
+        pwm_frequency=1000
     ),
     "joystick": JoystickConfig(
         deadzone=0.03,
-        non_linear_factor=1.3
+        non_linear_factor=1.0  # Respuesta lineal para diagnóstico
     ),
     "server": ServerConfig(
         host="0.0.0.0",
