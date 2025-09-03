@@ -23,14 +23,14 @@ class HardwareConfig:
     """Configuración del hardware L298N."""
     motor_a: MotorPins
     motor_b: MotorPins
-    pwm_frequency: int = 1000  # Hz
+    pwm_frequency: int = 1000
 
 
 @dataclass
 class JoystickConfig:
     """Configuración del joystick virtual."""
     deadzone: float = 0.03
-    non_linear_factor: float = 1.0  # 1.0 = lineal
+    non_linear_factor: float = 1.0
 
 
 @dataclass
@@ -45,13 +45,31 @@ class ServerConfig:
 # IMPORTANTE: Ajustar según el comportamiento real de tus motores
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),  # Cambiar si gira al revés
-        motor_b=MotorPins(enable=26, in1=19, in2=21, invert=False),  # Cambiar si gira al revés
-        pwm_frequency=2000
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),  # Motor A (izq) - OK
+        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=True),  # Motor B (der) - PROBLEMA COAST
+        pwm_frequency=4000
+    ),
+    "joystick": JoystickConfig(
+        deadzone=0.10,
+        non_linear_factor=1.3
+    ),
+    "server": ServerConfig(
+        host="0.0.0.0",
+        port=8080,
+        debug=False
+    )
+}
+
+# Configuración alternativa para probar si el problema es de pines intercambiados
+ALT_CONFIG_PINS_SWAPPED = {
+    "hardware": HardwareConfig(
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),  # Motor A sin cambios
+        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False),  # Motor B con IN3/IN4 intercambiados
+        pwm_frequency=15000
     ),
     "joystick": JoystickConfig(
         deadzone=0.03,
-        non_linear_factor=1.0  # Respuesta lineal para diagnóstico
+        non_linear_factor=1.0
     ),
     "server": ServerConfig(
         host="0.0.0.0",
@@ -64,3 +82,8 @@ DEFAULT_CONFIG = {
 def get_config() -> dict:
     """Retorna la configuración actual del sistema."""
     return DEFAULT_CONFIG
+
+
+def get_alt_config() -> dict:
+    """Retorna configuración alternativa con pines intercambiados para Motor B."""
+    return ALT_CONFIG_PINS_SWAPPED

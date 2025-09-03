@@ -35,8 +35,14 @@ class L298NMotor(MotorInterface):
     
     def _drive_pins(self, pin1_high: bool, pin2_high: bool) -> None:
         """Controla los pines de dirección del motor."""
-        self.pi.write(self.pins.in1, 1 if pin1_high else 0)
-        self.pi.write(self.pins.in2, 1 if pin2_high else 0)
+        pin1_val = 1 if pin1_high else 0
+        pin2_val = 1 if pin2_high else 0
+        
+        # Debug: mostrar qué se está enviando a los pines
+        print(f"[DEBUG] _drive_pins - IN1({self.pins.in1})={pin1_val}, IN2({self.pins.in2})={pin2_val}")
+        
+        self.pi.write(self.pins.in1, pin1_val)
+        self.pi.write(self.pins.in2, pin2_val)
     
     def set_direction(self, forward: bool, brake: bool = False) -> None:
         """Establece la dirección del motor."""
@@ -71,10 +77,25 @@ class L298NMotor(MotorInterface):
     
     def coast(self) -> None:
         """Pone el motor en modo coast (libre)."""
-        self._drive_pins(False, False)
+        # Debug: mostrar qué motor está haciendo coast
+        print(f"[DEBUG] Coast motor - Pines: EN={self.pins.enable}, IN1={self.pins.in1}, IN2={self.pins.in2}")
+        
+        # Primero parar PWM completamente
         self.pi.set_PWM_dutycycle(self.pins.enable, 0)
+        time.sleep(0.005)  # 5ms de delay
+        
+        # Luego poner pines de dirección en LOW (coast)
+        self._drive_pins(False, False)
+        time.sleep(0.005)  # 5ms de delay
+        
+        # Verificar que PWM esté realmente en 0
+        self.pi.set_PWM_dutycycle(self.pins.enable, 0)
+        
+        # Actualizar estado
         self.state.direction = MotorDirection.COAST
         self.state.speed_percent = 0.0
+        
+        print(f"[DEBUG] Coast completado - Estado: {self.state.direction.value}")
     
     def get_state(self) -> MotorState:
         """Obtiene el estado actual del motor."""
@@ -84,7 +105,7 @@ class L298NMotor(MotorInterface):
 class L298NController:
     """Controlador para dos motores L298N."""
     
-    def __init__(self, motor_a_pins: MotorPins, motor_b_pins: MotorPins, pwm_freq: int = 1000):
+    def __init__(self, motor_a_pins: MotorPins, motor_b_pins: MotorPins, pwm_freq: int = 4000):
         # Conectar a pigpio
         self.pi = pigpio.pi()
         if not self.pi.connected:
