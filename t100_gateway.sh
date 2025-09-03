@@ -9,7 +9,7 @@ set -e
 # Configuración de variables de entorno
 export T100_USER="${T100_USER:-4rgs}"
 export T100_HOME="${T100_HOME:-/home/$T100_USER}"
-export T100_INSTALL_DIR="${T100_INSTALL_DIR:-/opt/web-control/T100-Controler}"
+export T100_INSTALL_DIR="${T100_INSTALL_DIR:-/opt/web-motor/T100-Controler}"
 export T100_REPO="${T100_REPO:-https://github.com/4rgs/T100_Controler.git}"
 export T100_BRANCH="${T100_BRANCH:-develop}"
 export T100_SERVICE_NAME="${T100_SERVICE_NAME:-t100-controller-optimized}"

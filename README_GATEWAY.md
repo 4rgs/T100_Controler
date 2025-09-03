@@ -35,7 +35,7 @@ El gateway respeta estas variables de entorno:
 
 ```bash
 export T100_USER="4rgs"                                    # Usuario del sistema
-export T100_INSTALL_DIR="/opt/web-control/T100-Controler" # Directorio de instalación
+export T100_INSTALL_DIR="/opt/web-motor/T100-Controler" # Directorio de instalación
 export T100_BRANCH="develop"                              # Rama de GitHub
 export T100_PORT="5000"                                   # Puerto web
 export T100_HOST="0.0.0.0"                               # Host de escucha

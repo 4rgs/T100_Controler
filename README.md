@@ -47,7 +47,7 @@ cd T100_Controler
 ### Variables de entorno
 ```bash
 export T100_USER="4rgs"                                    # Usuario del sistema
-export T100_INSTALL_DIR="/opt/web-control/T100-Controler" # Directorio de instalación
+export T100_INSTALL_DIR="/opt/web-motor/T100-Controler" # Directorio de instalación
 export T100_BRANCH="develop"                              # Rama de GitHub
 export T100_PORT="5000"                                   # Puerto web
 ```
@@ -219,7 +219,7 @@ El sistema incluye actualización automática desde el repositorio:
 crontab -e
 
 # Agregar línea para verificar actualizaciones cada hora
-0 * * * * /opt/web-control/T100-Controler/update_system.sh
+0 * * * * /opt/web-motor/T100-Controler/update_system.sh
 ```
 
 ## 🏆 Rendimiento
