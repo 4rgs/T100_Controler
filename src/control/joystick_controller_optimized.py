@@ -26,12 +26,18 @@ class JoystickControllerOptimized:
     
     def process_joystick_input(self, x: float, y: float) -> None:
         """Procesa entrada del joystick con optimización."""
+        print(f"🎮 JoystickController recibió: x={x:.2f}, y={y:.2f}")
+        
         # Normalizar y aplicar deadzone
         x = self._apply_deadzone(x)
         y = self._apply_deadzone(y)
         
+        print(f"🎮 Después de deadzone: x={x:.2f}, y={y:.2f}")
+        
         # Calcular velocidades diferenciales
         left_speed, right_speed = self._differential_mix(x, y)
+        
+        print(f"🎮 Velocidades calculadas: L={left_speed:.2f}, R={right_speed:.2f}")
         
         # Determinar direcciones
         left_forward = left_speed >= 0
@@ -46,8 +52,11 @@ class JoystickControllerOptimized:
         
         # Solo actualizar si hay cambios significativos
         if self._values_changed(current_values):
+            print(f"🎮 Actualizando motores: L={left_speed:.2f}({left_forward}), R={right_speed:.2f}({right_forward})")
             self._update_motors(left_speed, left_forward, right_speed, right_forward)
             self._last_values = current_values
+        else:
+            print(f"🎮 Sin cambios significativos, saltando actualización")
     
     def _apply_deadzone(self, value: float) -> float:
         """Aplica zona muerta optimizada."""

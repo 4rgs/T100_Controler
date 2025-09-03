@@ -50,7 +50,7 @@ let ws=null, wsOpen=false, last={x:0,y:0}, sending=false, pending=false;
 function connectWS(){
     try{
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        ws = new WebSocket(`${proto}://${location.host}/ws`);
+        ws = new WebSocket(`${proto}://${location.host}/ws/joystick`);
         document.getElementById('wsstat').textContent = 'ws: conectando…';
         
         ws.onopen = ()=>{

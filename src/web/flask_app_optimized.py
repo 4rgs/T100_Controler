@@ -24,7 +24,7 @@ class OptimizedFlaskApp:
     """Aplicación Flask optimizada."""
     
     def __init__(self):
-        self.app = Flask(__name__, template_folder='../templates', static_folder='../static')
+        self.app = Flask(__name__, template_folder='../../templates', static_folder='../../static')
         self.sock = Sock(self.app)
         
         # Configurar logging mínimo
@@ -115,20 +115,26 @@ class OptimizedFlaskApp:
         @self.sock.route('/ws/joystick')
         def websocket_joystick(ws):
             """WebSocket optimizado para joystick."""
+            print("🔌 Nueva conexión WebSocket establecida")
             try:
                 while True:
-                    # Recibir datos con timeout
+                    # Recibir datos con timeout más largo
                     try:
-                        data = ws.receive(timeout=0.1)
+                        data = ws.receive(timeout=1.0)  # 1 segundo timeout
                         if data:
+                            print(f"📥 Datos recibidos: {data[:50]}...")  # Debug: primeros 50 chars
                             self._process_joystick_data(data)
-                    except Exception:
-                        # Timeout o error de conexión
+                    except TimeoutError:
+                        # Timeout normal, continuar
+                        continue
+                    except Exception as e:
+                        print(f"❌ Error recibiendo datos WebSocket: {e}")
                         continue
                         
             except Exception as e:
-                print(f"WebSocket error: {e}")
+                print(f"💥 WebSocket error: {e}")
             finally:
+                print("🔌 Conexión WebSocket cerrada")
                 # Detener motores al desconectar
                 if self.joystick_controller:
                     self.joystick_controller.stop()
@@ -146,13 +152,22 @@ class OptimizedFlaskApp:
             x = float(joystick_data.get('x', 0))
             y = float(joystick_data.get('y', 0))
             
+            print(f"🎮 Joystick: x={x:.2f}, y={y:.2f}")  # Debug
+            
             # Procesar solo si hay controlador
             if self.joystick_controller:
                 self.joystick_controller.process_joystick_input(x, y)
                 self._last_joystick_time = current_time
+                print(f"✅ Comando enviado a motores")  # Debug
+            else:
+                print(f"❌ No hay controlador de joystick disponible")  # Debug
                 
-        except (json.JSONDecodeError, ValueError, TypeError):
-            pass  # Ignorar datos malformados
+        except json.JSONDecodeError as e:
+            print(f"❌ Error JSON: {e}")
+        except (ValueError, TypeError) as e:
+            print(f"❌ Error de datos: {e}")
+        except Exception as e:
+            print(f"❌ Error procesando joystick: {e}")
     
     def get_app(self) -> Flask:
         """Obtiene la instancia de Flask."""
