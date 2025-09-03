@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Implementación concreta del driver L298N usando pigpio.
+Driver L298N optimizado para mínimo uso de recursos.
 """
 
 import atexit
@@ -16,104 +16,101 @@ from ..config.settings import MotorPins
 from .motor_interface import MotorInterface, MotorState, MotorDirection
 
 
-class L298NMotor(MotorInterface):
-    """Motor individual controlado por L298N."""
+class L298NMotorOptimized(MotorInterface):
+    """Motor individual optimizado para bajo consumo de recursos."""
+    
+    __slots__ = ['pi', 'pins', 'state', '_last_direction', '_last_speed']
     
     def __init__(self, pi_instance: pigpio.pi, pins: MotorPins, pwm_freq: int = 1000):
         self.pi = pi_instance
         self.pins = pins
         self.state = MotorState()
+        self._last_direction = None
+        self._last_speed = 0.0
         
-        # Configurar pines
+        # Configurar pines una sola vez
         for pin in (pins.enable, pins.in1, pins.in2):
             self.pi.set_mode(pin, pigpio.OUTPUT)
             self.pi.write(pin, 0)
         
-        # Configurar PWM
+        # Configurar PWM una sola vez
         self.pi.set_PWM_frequency(pins.enable, pwm_freq)
         self.pi.set_PWM_dutycycle(pins.enable, 0)
     
-    def _drive_pins(self, pin1_high: bool, pin2_high: bool) -> None:
-        """Controla los pines de dirección del motor."""
-        pin1_val = 1 if pin1_high else 0
-        pin2_val = 1 if pin2_high else 0
-        
-        # Debug: mostrar qué se está enviando a los pines
-        print(f"[DEBUG] _drive_pins - IN1({self.pins.in1})={pin1_val}, IN2({self.pins.in2})={pin2_val}")
-        
-        self.pi.write(self.pins.in1, pin1_val)
-        self.pi.write(self.pins.in2, pin2_val)
+    def _drive_pins_fast(self, pin1_high: bool, pin2_high: bool) -> None:
+        """Controla los pines de dirección sin logging para máximo rendimiento."""
+        self.pi.write(self.pins.in1, 1 if pin1_high else 0)
+        self.pi.write(self.pins.in2, 1 if pin2_high else 0)
     
     def set_direction(self, forward: bool, brake: bool = False) -> None:
-        """Establece la dirección del motor."""
-        # Primero parar el motor antes de cambiar dirección
+        """Establece la dirección solo si cambió."""
+        direction = "brake" if brake else ("fwd" if forward else "back")
+        
+        # Optimización: solo cambiar si la dirección es diferente
+        if self._last_direction == direction:
+            return
+            
+        # Parar PWM antes del cambio
         self.pi.set_PWM_dutycycle(self.pins.enable, 0)
-        time.sleep(0.01)  # Pequeño delay para estabilizar
         
         if brake:
-            self._drive_pins(True, True)
+            self._drive_pins_fast(True, True)
             self.state.direction = MotorDirection.BRAKE
-            return
-        
-        # Aplicar inversión si está configurada
-        actual_forward = forward ^ self.pins.invert
-        
-        if actual_forward:
-            self._drive_pins(True, False)
-            self.state.direction = MotorDirection.FORWARD
         else:
-            self._drive_pins(False, True)
-            self.state.direction = MotorDirection.BACKWARD
+            actual_forward = forward ^ self.pins.invert
+            if actual_forward:
+                self._drive_pins_fast(True, False)
+                self.state.direction = MotorDirection.FORWARD
+            else:
+                self._drive_pins_fast(False, True)
+                self.state.direction = MotorDirection.BACKWARD
         
-        time.sleep(0.01)  # Pequeño delay después del cambio
+        self._last_direction = direction
     
     def set_speed(self, speed_percent: float) -> None:
-        """Establece la velocidad del motor (0-100%)."""
+        """Establece la velocidad solo si cambió significativamente."""
         speed_percent = max(0.0, min(100.0, speed_percent))
-        duty_cycle = int(speed_percent * 2.55)  # Convertir a 0-255
         
+        # Optimización: solo cambiar si la diferencia es significativa (>1%)
+        if abs(speed_percent - self._last_speed) < 1.0:
+            return
+            
+        duty_cycle = int(speed_percent * 2.55)
         self.pi.set_PWM_dutycycle(self.pins.enable, duty_cycle)
         self.state.speed_percent = speed_percent
+        self._last_speed = speed_percent
     
     def coast(self) -> None:
-        """Pone el motor en modo coast (libre)."""
-        # Debug: mostrar qué motor está haciendo coast
-        print(f"[DEBUG] Coast motor - Pines: EN={self.pins.enable}, IN1={self.pins.in1}, IN2={self.pins.in2}")
-        
-        # Primero parar PWM completamente
+        """Modo coast optimizado."""
+        if self._last_direction == "coast" and self._last_speed == 0.0:
+            return  # Ya está en coast
+            
+        self._drive_pins_fast(False, False)
         self.pi.set_PWM_dutycycle(self.pins.enable, 0)
-        time.sleep(0.005)  # 5ms de delay
-        
-        # Luego poner pines de dirección en LOW (coast)
-        self._drive_pins(False, False)
-        time.sleep(0.005)  # 5ms de delay
-        
-        # Verificar que PWM esté realmente en 0
-        self.pi.set_PWM_dutycycle(self.pins.enable, 0)
-        
-        # Actualizar estado
         self.state.direction = MotorDirection.COAST
         self.state.speed_percent = 0.0
-        
-        print(f"[DEBUG] Coast completado - Estado: {self.state.direction.value}")
+        self._last_direction = "coast"
+        self._last_speed = 0.0
     
     def get_state(self) -> MotorState:
         """Obtiene el estado actual del motor."""
         return self.state
 
 
-class L298NController:
-    """Controlador para dos motores L298N."""
+class L298NControllerOptimized:
+    """Controlador optimizado para dos motores L298N."""
     
-    def __init__(self, motor_a_pins: MotorPins, motor_b_pins: MotorPins, pwm_freq: int = 4000):
+    __slots__ = ['pi', 'motor_a', 'motor_b']
+    
+    def __init__(self, motor_a_pins: MotorPins, motor_b_pins: MotorPins, pwm_freq: int = 1000):
         # Conectar a pigpio
         self.pi = pigpio.pi()
         if not self.pi.connected:
-            raise RuntimeError("❌ No puedo conectar a pigpio. Ejecuta: sudo systemctl enable --now pigpiod")
+            raise RuntimeError("No se puede conectar a pigpio")
         
-        # Crear motores
-        self.motor_a = L298NMotor(self.pi, motor_a_pins, pwm_freq)
-        self.motor_b = L298NMotor(self.pi, motor_b_pins, pwm_freq)
+        # Crear motores optimizados
+        self.motor_a = L298NMotorOptimized(self.pi, motor_a_pins, pwm_freq)
+        self.motor_b = L298NMotorOptimized(self.pi, motor_b_pins, pwm_freq)
         
         # Registrar limpieza
         atexit.register(self._cleanup)
@@ -121,11 +118,9 @@ class L298NController:
         signal.signal(signal.SIGTERM, self._cleanup_signal)
     
     def get_motor_a(self) -> MotorInterface:
-        """Obtiene el motor A (izquierdo)."""
         return self.motor_a
     
     def get_motor_b(self) -> MotorInterface:
-        """Obtiene el motor B (derecho)."""
         return self.motor_b
     
     def stop_all(self) -> None:

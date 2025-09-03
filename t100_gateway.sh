@@ -12,7 +12,7 @@ export T100_HOME="${T100_HOME:-/home/$T100_USER}"
 export T100_INSTALL_DIR="${T100_INSTALL_DIR:-/opt/web-motor/T100-Controler}"
 export T100_REPO="${T100_REPO:-https://github.com/4rgs/T100_Controler.git}"
 export T100_BRANCH="${T100_BRANCH:-develop}"
-export T100_SERVICE_NAME="${T100_SERVICE_NAME:-t100-controller-optimized}"
+export T100_SERVICE_NAME="${T100_SERVICE_NAME:-t100-controller}"
 export T100_PORT="${T100_PORT:-5000}"
 export T100_HOST="${T100_HOST:-0.0.0.0}"
 
@@ -180,13 +180,42 @@ setup_python_environment() {
     log_info "Entorno Python configurado"
 }
 
+# Limpiar servicios obsoletos
+cleanup_old_services() {
+    log_info "Limpiando servicios obsoletos..."
+    
+    # Lista de servicios antiguos a eliminar
+    local old_services=(
+        "t100-controller-optimized"
+        "t100-controller-autoupdate" 
+        "t100-autoupdate" 
+        "motor-control"
+        "web-motor"
+        "t100-motor"
+    )
+    
+    for service in "${old_services[@]}"; do
+        if systemctl list-unit-files --no-legend | grep -q "^${service}.service"; then
+            log_warning "Eliminando servicio obsoleto: ${service}"
+            sudo systemctl stop "${service}" 2>/dev/null || true
+            sudo systemctl disable "${service}" 2>/dev/null || true
+            sudo rm -f "/etc/systemd/system/${service}.service"
+        fi
+    done
+    
+    sudo systemctl daemon-reload
+}
+
 # Crear servicio systemd
 create_systemd_service() {
     log_info "Creando servicio systemd optimizado..."
     
+    # Limpiar servicios antiguos
+    cleanup_old_services
+    
     sudo tee /etc/systemd/system/$T100_SERVICE_NAME.service > /dev/null << EOF
 [Unit]
-Description=T100 Controller Optimized Service
+Description=T100 Controller Service
 After=network.target pigpiod.service
 Wants=network.target
 Requires=pigpiod.service
@@ -203,7 +232,7 @@ Environment=T100_HOST=$T100_HOST
 Environment=T100_PORT=$T100_PORT
 Environment=T100_DEBUG=false
 ExecStartPre=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate'
-ExecStart=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate && python motor_control_optimized.py'
+ExecStart=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate && python main.py'
 ExecReload=/bin/bash $T100_INSTALL_DIR/t100_gateway.sh update
 Restart=on-failure
 RestartSec=5
