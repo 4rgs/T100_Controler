@@ -49,16 +49,19 @@ class OptimizedFlaskApp:
     def _setup_hardware(self):
         """Configura el hardware optimizado."""
         try:
+            hardware_config = self.hardware_config["hardware"]
+            joystick_config = self.hardware_config["joystick"]
+            
             self.motor_controller = L298NControllerOptimized(
-                self.hardware_config.motor_a_pins,
-                self.hardware_config.motor_b_pins,
-                pwm_freq=1000
+                hardware_config.motor_a,
+                hardware_config.motor_b,
+                pwm_freq=hardware_config.pwm_frequency
             )
             
             self.joystick_controller = JoystickControllerOptimized(
                 self.motor_controller.get_motor_a(),
                 self.motor_controller.get_motor_b(),
-                self.hardware_config.joystick_config
+                joystick_config
             )
             
         except Exception as e:
