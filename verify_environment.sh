@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Variables
-INSTALL_DIR="/opt/web-control"
+INSTALL_DIR="/opt/web-motor"
 PROJECT_DIR="$INSTALL_DIR/T100_Controler"
 VENV_DIR="$INSTALL_DIR/venv"
 

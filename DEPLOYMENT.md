@@ -87,7 +87,7 @@ sudo ./update_t100.sh
 
 Después de la instalación:
 ```
-/opt/web-control/
+/opt/web-motor/
 ├── T100_Controler/          # Código del proyecto
 ├── venv/                    # Entorno virtual Python
 └── (otros archivos)
@@ -133,7 +133,7 @@ Una vez instalado y ejecutándose:
 journalctl -u web-motor.service -n 100
 
 # Verificar permisos
-ls -la /opt/web-control/
+ls -la /opt/web-motor/
 
 # Verificar pigpiod
 sudo systemctl status pigpiod
@@ -151,7 +151,7 @@ sudo reboot
 ### Error de dependencias Python
 ```bash
 # Reinstalar entorno virtual
-cd /opt/web-control
+cd /opt/web-motor
 sudo rm -rf venv
 python3 -m venv venv
 source venv/bin/activate

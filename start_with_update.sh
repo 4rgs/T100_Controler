@@ -6,7 +6,7 @@
 set -e
 
 # Variables de configuración
-INSTALL_DIR="/opt/web-control"
+INSTALL_DIR="/opt/web-motor"
 PROJECT_DIR="$INSTALL_DIR/T100_Controler"
 PYTHON_VENV="$INSTALL_DIR/venv/bin/python"
 UPDATE_SCRIPT="$PROJECT_DIR/update_t100_lite.sh"

@@ -6,8 +6,8 @@
 set -e
 
 # Variables
-PROJECT_DIR="/opt/web-control/T100_Controler"
-VENV_DIR="/opt/web-control/venv"
+PROJECT_DIR="/opt/web-motor/T100_Controler"
+VENV_DIR="/opt/web-motor/venv"
 
 # Cambiar al directorio del proyecto
 cd "$PROJECT_DIR"

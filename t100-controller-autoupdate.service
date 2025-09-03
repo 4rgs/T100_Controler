@@ -8,12 +8,12 @@ Requires=pigpiod.service
 Type=simple
 User=4rgs
 Group=4rgs
-WorkingDirectory=/opt/web-control/T100_Controler
-ExecStart=/opt/web-control/T100_Controler/start_with_update.sh
+WorkingDirectory=/opt/web-motor/T100_Controler
+ExecStart=/opt/web-motor/T100_Controler/start_with_update.sh
 Restart=on-failure
 RestartSec=10
 Environment=PYTHONUNBUFFERED=1
-Environment=PYTHONPATH=/opt/web-control/T100_Controler
+Environment=PYTHONPATH=/opt/web-motor/T100_Controler
 
 # Configuración de logging
 StandardOutput=journal

@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Variables de configuración
-INSTALL_DIR="/opt/web-control"
+INSTALL_DIR="/opt/web-motor"
 PROJECT_DIR="$INSTALL_DIR/T100_Controler"
 SERVICE_NAME="web-motor.service"
 BRANCH="develop"
