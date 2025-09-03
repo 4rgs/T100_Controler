@@ -1,4 +1,4 @@
 Flask==3.0.3
-pigpio==1.79
+pigpio==1.78
 flask-sock==0.7.0
 simple-websocket==1.0.0

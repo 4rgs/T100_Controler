@@ -3,7 +3,7 @@
 
 Flask==3.0.3
 flask-sock==0.7.0
-pigpio==1.79
+pigpio==1.78
 
 # Opcional: para monitoreo de recursos (comentar si no es necesario)
 # psutil==5.9.8
