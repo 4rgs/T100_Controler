@@ -130,7 +130,9 @@ function pollGamepad(){
     
     if(gp){
         let x = gp.axes[0] || 0;
-        let y = -(gp.axes[1] || 0); // ↑ positivo (no invertido)
+        // COMPORTAMIENTO TIPO DRONE: Y invertido para gamepad físico
+        // Stick hacia arriba (valor negativo) = avanzar (valor positivo)
+        let y = (gp.axes[1] || 0); // Mantener valor crudo para comportamiento drone
         const DZ = 0.06;
         if (Math.abs(x)<DZ) x=0;
         if (Math.abs(y)<DZ) y=0;

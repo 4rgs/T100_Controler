@@ -34,6 +34,14 @@ class JoystickConfig:
 
 
 @dataclass
+class GamepadConfig:
+    """Configuración del gamepad físico."""
+    deadzone: float = 0.06
+    invert_y_axis: bool = True  # True para comportamiento tipo drone
+    non_linear_factor: float = 1.0
+
+
+@dataclass
 class ServerConfig:
     """Configuración del servidor web."""
     host: str = "0.0.0.0"
@@ -53,6 +61,11 @@ DEFAULT_CONFIG = {
         deadzone=0.10,
         non_linear_factor=1.3
     ),
+    "gamepad": GamepadConfig(
+        deadzone=0.06,
+        invert_y_axis=True,  # Comportamiento tipo drone
+        non_linear_factor=1.0
+    ),
     "server": ServerConfig(
         host="0.0.0.0",
         port=8080,
@@ -71,6 +84,12 @@ ALT_CONFIG_PINS_SWAPPED = {
         deadzone=0.03,
         non_linear_factor=1.0
     ),
+    "gamepad": GamepadConfig(
+        deadzone=0.06,
+        invert_y_axis=True,  # Comportamiento tipo drone
+        non_linear_factor=1.0
+    ),
+    
     "server": ServerConfig(
         host="0.0.0.0",
         port=8080,
