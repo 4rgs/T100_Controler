@@ -1,52 +1,64 @@
-# T100 Control Optimizado 🚀
+# T100 Controller - Gateway Unificado 🚀
 
-Sistema de control de motores T100 optimizado para Raspberry Pi con interfaz web y monitor de recursos en tiempo real.
+Sistema de control de motores T100 optimizado para Raspberry Pi con **gateway unificado** que maneja instalación, actualización y ejecución en un solo script.
 
 ## 🌟 Características
 
 - **🎮 Control por joystick virtual y gamepad físico** con soporte para controles de drone
 - **📊 Monitor de recursos en tiempo real** integrado en la interfaz web
 - **⚡ Optimizado para mínimo uso de recursos** (CPU, RAM, red)
-- **🔧 Auto-instalación y auto-actualización** del sistema
+- **🔧 Gateway unificado** - un solo script para todo
+- **🔄 Auto-actualización automática** desde GitHub
 - **🚀 Inicio automático** con el sistema
 - **📱 Interfaz web responsive** con diseño moderno
 - **🛡️ Manejo robusto de errores** y recuperación automática
 
-## 🚀 Instalación Rápida
+## 🚀 Instalación Ultra-Rápida
 
-### Opción 1: Auto-instalación (Recomendado)
+### Instalación en una línea
+```bash
+# Instalación completa automática (usuario 4rgs)
+curl -sSL https://raw.githubusercontent.com/4rgs/T100_Controler/develop/t100_gateway.sh | bash -s install
+```
+
+### Instalación manual
 ```bash
 # Clonar repositorio
 git clone https://github.com/4rgs/T100_Controler.git
 cd T100_Controler
 
-# Ejecutar auto-instalación
-./auto_install.sh
+# Ejecutar instalación completa
+./t100_gateway.sh install
 ```
 
-### Opción 2: Instalación manual
+## 🔧 Uso del Gateway
+
+### Comandos principales
 ```bash
-# Instalar dependencias del sistema
-sudo apt update
-sudo apt install -y pigpio python3-pip git
-
-# Instalar dependencias de Python
-pip3 install -r requirements_optimized.txt --user
-
-# Optimizar sistema
-sudo ./optimize_system.sh
-
-# Configurar servicios
-sudo systemctl enable pigpiod motor-control-optimized
-sudo systemctl start pigpiod motor-control-optimized
+./t100_gateway.sh install     # Instalación completa
+./t100_gateway.sh run         # Ejecutar en modo directo
+./t100_gateway.sh status      # Ver estado del sistema
+./t100_gateway.sh update      # Actualizar desde GitHub
+./t100_gateway.sh monitor     # Monitorear recursos
+./t100_gateway.sh restart     # Reiniciar servicio
+./t100_gateway.sh logs        # Ver logs en tiempo real
 ```
 
-## 📱 Uso
+### Variables de entorno
+```bash
+export T100_USER="4rgs"                                    # Usuario del sistema
+export T100_INSTALL_DIR="/opt/web-control/T100-Controler" # Directorio de instalación
+export T100_BRANCH="develop"                              # Rama de GitHub
+export T100_PORT="5000"                                   # Puerto web
+```
 
-### Acceso Web
+## 📱 Acceso Web
+
+### Interfaz Principal
 - **URL**: `http://[IP_RASPBERRY]:5000`
-- La interfaz incluye monitor de recursos en tiempo real
-- Soporte para joystick virtual y gamepad físico
+- Monitor de recursos integrado (CPU, RAM, temperatura)
+- Joystick virtual y soporte para gamepad físico
+- Controles de drone para gamepad físico (eje Y invertido)
 
 ### Controles
 - **Joystick virtual**: Arrastrar en pantalla
