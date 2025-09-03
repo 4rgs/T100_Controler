@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T100 Control - Optimizado</title>
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --danger-color: #f44336;
+            --success-color: #4CAF50;
+            --warning-color: #ff9800;
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-color: #ffffff;
+            --text-secondary: #b0b0b0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-color);
+            padding: 0 20px;
+            border-radius: 8px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--success-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: var(--danger-color);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .control-area {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .monitor-panel {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .monitor-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .progress-normal { background: var(--success-color); }
+        .progress-warning { background: var(--warning-color); }
+        .progress-danger { background: var(--danger-color); }
+
+        .joystick-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+        }
+
+        .joystick {
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--primary-color);
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle at center, rgba(33, 150, 243, 0.1), transparent);
+        }
+
+        .joystick-knob {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .joystick-knob:active {
+            cursor: grabbing;
+            box-shadow: 0 6px 16px rgba(33, 150, 243, 0.6);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-stop {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-stop:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+
+        .connection-status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .disconnected {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .overload-warning {
+            background: var(--danger-color);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .gamepad-status {
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: 60px 1fr 200px;
+            }
+            
+            .joystick-container {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🚀 T100 Control Optimizado</div>
+            <div class="status-indicator">
+                <span class="connection-status disconnected" id="connectionStatus">Desconectado</span>
+                <div class="status-dot error" id="statusDot"></div>
+            </div>
+        </div>
+
+        <div class="control-area">
+            <div class="joystick-container">
+                <div class="joystick" id="joystick">
+                    <div class="joystick-knob" id="joystickKnob"></div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-stop" onclick="emergencyStop()">🛑 PARADA</button>
+            </div>
+            
+            <div class="gamepad-status" id="gamepadStatus">
+                Gamepad: No detectado
+            </div>
+        </div>
+
+        <div class="monitor-panel">
+            <div class="monitor-title">📊 Monitor del Sistema</div>
+            
+            <div id="overloadWarning" class="overload-warning" style="display: none;">
+                ⚠️ SISTEMA SOBRECARGADO
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">CPU</span>
+                <div style="flex: 1; margin: 0 10px;">
+                    <div class="metric-value" id="cpuValue">0%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-normal" id="cpuProgress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <span class="metric-label">RAM</span>
+                <div style="flex: 1; margin: 0 10px;">
+                    <div class="metric-value" id="memoryValue">0%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill progress-normal" id="memoryProgress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <span class="metric-label">Memoria</span>
+                <div class="metric-value" id="memoryMb">0 MB</div>
+            </div>
+
+            <div class="metric">
+                <span class="metric-label">🌡️ Temp</span>
+                <div class="metric-value" id="temperature">--°C</div>
+            </div>
+
+            <div class="metric">
+                <span class="metric-label">📡 Latencia</span>
+                <div class="metric-value" id="latency">-- ms</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let socket = null;
+        let isConnected = false;
+        let isDragging = false;
+        let joystickCenter = { x: 0, y: 0 };
+        let lastGamepadState = null;
+        let lastPingTime = 0;
+        
+        // Elementos DOM
+        const joystick = document.getElementById('joystick');
+        const joystickKnob = document.getElementById('joystickKnob');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusDot = document.getElementById('statusDot');
+        const gamepadStatus = document.getElementById('gamepadStatus');
+
+        // Inicializar cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            initJoystick();
+            connectWebSocket();
+            startResourceMonitoring();
+            startGamepadPolling();
+        });
+
+        // Inicializar joystick virtual
+        function initJoystick() {
+            const rect = joystick.getBoundingClientRect();
+            joystickCenter.x = rect.width / 2;
+            joystickCenter.y = rect.height / 2;
+
+            // Mouse events
+            joystickKnob.addEventListener('mousedown', startDragging);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+
+            // Touch events
+            joystickKnob.addEventListener('touchstart', startDragging);
+            document.addEventListener('touchmove', drag);
+            document.addEventListener('touchend', stopDragging);
+        }
+
+        function startDragging(e) {
+            e.preventDefault();
+            isDragging = true;
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+
+            const rect = joystick.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            let x = clientX - rect.left - joystickCenter.x;
+            let y = clientY - rect.top - joystickCenter.y;
+
+            // Limitar al círculo
+            const distance = Math.sqrt(x * x + y * y);
+            const maxDistance = rect.width / 2 - 20;
+            
+            if (distance > maxDistance) {
+                x = (x / distance) * maxDistance;
+                y = (y / distance) * maxDistance;
+            }
+
+            // Actualizar posición visual
+            joystickKnob.style.transform = `translate(${x}px, ${y}px)`;
+
+            // Normalizar valores (-1 a 1)
+            const normalizedX = x / maxDistance;
+            const normalizedY = -y / maxDistance; // Invertir Y
+
+            sendJoystickData(normalizedX, normalizedY);
+        }
+
+        function stopDragging() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            // Volver al centro
+            joystickKnob.style.transform = 'translate(0px, 0px)';
+            sendJoystickData(0, 0);
+        }
+
+        // WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/joystick`;
+            
+            socket = new WebSocket(wsUrl);
+            
+            socket.onopen = function() {
+                isConnected = true;
+                updateConnectionStatus(true);
+            };
+            
+            socket.onclose = function() {
+                isConnected = false;
+                updateConnectionStatus(false);
+                // Reconectar después de 2 segundos
+                setTimeout(connectWebSocket, 2000);
+            };
+            
+            socket.onerror = function() {
+                isConnected = false;
+                updateConnectionStatus(false);
+            };
+        }
+
+        function sendJoystickData(x, y) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const data = JSON.stringify({ x: x, y: y });
+                socket.send(data);
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.textContent = 'Conectado';
+                connectionStatus.className = 'connection-status connected';
+                statusDot.className = 'status-dot';
+            } else {
+                connectionStatus.textContent = 'Desconectado';
+                connectionStatus.className = 'connection-status disconnected';
+                statusDot.className = 'status-dot error';
+            }
+        }
+
+        // Monitor de recursos
+        function startResourceMonitoring() {
+            updateResourceStats();
+            setInterval(updateResourceStats, 3000); // Cada 3 segundos
+        }
+
+        async function updateResourceStats() {
+            try {
+                const pingStart = performance.now();
+                const response = await fetch('/api/resources');
+                const pingEnd = performance.now();
+                const latency = Math.round(pingEnd - pingStart);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Actualizar CPU
+                    updateMetric('cpu', data.cpu_percent);
+                    
+                    // Actualizar Memoria
+                    updateMetric('memory', data.memory_percent);
+                    document.getElementById('memoryMb').textContent = `${data.memory_mb} MB`;
+                    
+                    // Actualizar Temperatura
+                    const tempElement = document.getElementById('temperature');
+                    if (data.temperature !== null) {
+                        tempElement.textContent = `${data.temperature}°C`;
+                        if (data.temperature > 70) {
+                            tempElement.style.color = 'var(--danger-color)';
+                        } else if (data.temperature > 60) {
+                            tempElement.style.color = 'var(--warning-color)';
+                        } else {
+                            tempElement.style.color = 'var(--text-color)';
+                        }
+                    } else {
+                        tempElement.textContent = 'N/A';
+                    }
+                    
+                    // Actualizar Latencia
+                    const latencyElement = document.getElementById('latency');
+                    latencyElement.textContent = `${latency} ms`;
+                    if (latency > 100) {
+                        latencyElement.style.color = 'var(--danger-color)';
+                    } else if (latency > 50) {
+                        latencyElement.style.color = 'var(--warning-color)';
+                    } else {
+                        latencyElement.style.color = 'var(--success-color)';
+                    }
+                    
+                    // Mostrar alerta de sobrecarga
+                    const overloadWarning = document.getElementById('overloadWarning');
+                    if (data.overloaded) {
+                        overloadWarning.style.display = 'block';
+                    } else {
+                        overloadWarning.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching resource stats:', error);
+            }
+        }
+
+        function updateMetric(type, value) {
+            const valueElement = document.getElementById(`${type}Value`);
+            const progressElement = document.getElementById(`${type}Progress`);
+            
+            valueElement.textContent = `${value}%`;
+            progressElement.style.width = `${value}%`;
+            
+            // Cambiar color según el valor
+            if (value > 80) {
+                progressElement.className = 'progress-fill progress-danger';
+            } else if (value > 60) {
+                progressElement.className = 'progress-fill progress-warning';
+            } else {
+                progressElement.className = 'progress-fill progress-normal';
+            }
+        }
+
+        // Gamepad
+        function startGamepadPolling() {
+            setInterval(pollGamepad, 50); // 20 Hz
+        }
+
+        function pollGamepad() {
+            const gamepads = navigator.getGamepads();
+            const gamepad = gamepads[0];
+            
+            if (gamepad) {
+                gamepadStatus.textContent = `Gamepad: ${gamepad.id.substring(0, 20)}...`;
+                gamepadStatus.style.color = 'var(--success-color)';
+                
+                // Solo procesar si no estamos usando el joystick virtual
+                if (!isDragging) {
+                    const x = gamepad.axes[0] || 0;
+                    let y = gamepad.axes[1] || 0;
+                    
+                    // Invertir Y para controles de drone (solo gamepad físico)
+                    y = -y;
+                    
+                    // Aplicar deadzone
+                    const deadzone = 0.1;
+                    const finalX = Math.abs(x) > deadzone ? x : 0;
+                    const finalY = Math.abs(y) > deadzone ? y : 0;
+                    
+                    sendJoystickData(finalX, finalY);
+                }
+            } else {
+                gamepadStatus.textContent = 'Gamepad: No detectado';
+                gamepadStatus.style.color = 'var(--text-secondary)';
+            }
+        }
+
+        // Funciones de control
+        async function emergencyStop() {
+            try {
+                await fetch('/api/emergency_stop', { method: 'POST' });
+            } catch (error) {
+                console.error('Error en parada de emergencia:', error);
+            }
+        }
+
+        // Atajos de teclado
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                emergencyStop();
+            }
+        });
+    </script>
+</body>
+</html>
