@@ -9,7 +9,7 @@ Type=simple
 User=4rgs
 Group=4rgs
 WorkingDirectory=/opt/web-motor
-ExecStart=/opt/web-motor/venv/bin/python main.py
+ExecStart=/opt/web-motor/venv/bin/python3 motor_control.py
 Restart=on-failure
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
