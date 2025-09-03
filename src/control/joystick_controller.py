@@ -79,7 +79,7 @@ class JoystickController:
     
     def _apply_motor_command(self, motor, speed: float) -> None:
         """Aplica comando a un motor individual."""
-        from ..utils import is_approximately_zero
+        from ..utils.common import is_approximately_zero
         
         if is_approximately_zero(speed):
             motor.coast()
