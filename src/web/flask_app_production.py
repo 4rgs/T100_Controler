@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Aplicación Flask optimizada para mínimo uso de recursos.
+Versión de producción con debug mínimo para flask_app_optimized.py
 """
 
 import json
@@ -16,16 +16,17 @@ from flask_sock import Sock
 
 from ..config.settings import HardwareConfig, DEFAULT_CONFIG
 from ..hardware.l298n_driver_optimized import L298NControllerOptimized
-from ..control.joystick_controller_optimized import JoystickControllerOptimized
+from ..control.joystick_controller_production import JoystickControllerOptimized
 from ..utils.simple_resource_monitor import SimpleResourceMonitor
 
 
-class OptimizedFlaskApp:
-    """Aplicación Flask optimizada."""
+class OptimizedFlaskAppProduction:
+    """Aplicación Flask optimizada para producción (debug mínimo)."""
     
-    def __init__(self):
+    def __init__(self, debug_mode: bool = False):
         self.app = Flask(__name__, template_folder='../../templates', static_folder='../../static')
         self.sock = Sock(self.app)
+        self.debug_mode = debug_mode
         
         # Configurar logging mínimo
         logging.getLogger('werkzeug').setLevel(logging.WARNING)
@@ -36,12 +37,16 @@ class OptimizedFlaskApp:
         self.joystick_controller = None
         
         # Monitor de recursos optimizado
-        self.resource_monitor = SimpleResourceMonitor(interval=2.0)  # Cada 2 segundos
+        self.resource_monitor = SimpleResourceMonitor(interval=3.0)  # Cada 3 segundos
         self.resource_monitor.start_monitoring()
         
         # Cache para evitar procesamientos innecesarios
         self._last_joystick_time = 0
         self._min_joystick_interval = 0.02  # 50 Hz máximo
+        
+        # Estadísticas de conexión
+        self._connection_count = 0
+        self._last_data_time = 0
         
         self._setup_hardware()
         self._setup_routes()
@@ -61,11 +66,15 @@ class OptimizedFlaskApp:
             self.joystick_controller = JoystickControllerOptimized(
                 self.motor_controller.get_motor_a(),
                 self.motor_controller.get_motor_b(),
-                joystick_config
+                joystick_config,
+                debug=self.debug_mode
             )
             
+            if self.debug_mode:
+                print("✅ Hardware configurado correctamente")
+            
         except Exception as e:
-            print(f"Error configurando hardware: {e}")
+            print(f"❌ Error configurando hardware: {e}")
             self.motor_controller = None
             self.joystick_controller = None
     
@@ -82,6 +91,8 @@ class OptimizedFlaskApp:
             return jsonify({
                 'status': 'online',
                 'hardware': self.motor_controller is not None,
+                'connections': self._connection_count,
+                'last_data': self._last_data_time,
                 'timestamp': int(time.time())
             })
         
@@ -115,46 +126,59 @@ class OptimizedFlaskApp:
         @self.sock.route('/ws/joystick')
         def websocket_joystick(ws):
             """WebSocket optimizado para joystick."""
-            print("🔌 Nueva conexión WebSocket establecida")
+            self._connection_count += 1
+            connection_id = self._connection_count
+            
+            if self.debug_mode:
+                print(f"🔌 WebSocket #{connection_id} conectado")
+            
             connection_active = True
+            error_count = 0
+            max_errors = 5
             
             try:
-                while connection_active:
+                while connection_active and error_count < max_errors:
                     try:
-                        # Recibir datos con timeout más corto para detectar desconexiones
                         data = ws.receive(timeout=0.5)
                         if data:
-                            print(f"📥 Datos recibidos: {data[:50]}...")
-                            self._process_joystick_data(data)
+                            self._last_data_time = int(time.time())
+                            self._process_joystick_data(data, connection_id)
+                            error_count = 0  # Reset contador de errores en éxito
+                            
                     except TimeoutError:
                         # Timeout normal, continuar
                         continue
                     except ConnectionError:
                         # Conexión cerrada normalmente
-                        print("🔌 Cliente desconectado normalmente")
+                        if self.debug_mode:
+                            print(f"🔌 WebSocket #{connection_id} desconectado normalmente")
                         connection_active = False
                         break
                     except Exception as e:
+                        error_count += 1
                         error_msg = str(e)
                         if "Connection closed" in error_msg:
-                            print(f"🔌 Conexión cerrada por cliente (código: {error_msg})")
+                            if self.debug_mode:
+                                print(f"🔌 WebSocket #{connection_id} cerrado por cliente")
                             connection_active = False
                             break
                         else:
-                            print(f"❌ Error inesperado en WebSocket: {e}")
-                            connection_active = False
-                            break
+                            if self.debug_mode or error_count == 1:
+                                print(f"❌ Error #{error_count} en WebSocket #{connection_id}: {e}")
+                            if error_count >= max_errors:
+                                print(f"💥 Demasiados errores en WebSocket #{connection_id}, cerrando")
+                                connection_active = False
                         
             except Exception as e:
-                print(f"💥 Error crítico en WebSocket: {e}")
+                print(f"💥 Error crítico en WebSocket #{connection_id}: {e}")
             finally:
-                print("🔌 Limpiando conexión WebSocket")
+                if self.debug_mode:
+                    print(f"🔌 Limpiando WebSocket #{connection_id}")
                 # Detener motores al desconectar
                 if self.joystick_controller:
-                    print("🛑 Deteniendo motores por desconexión")
                     self.joystick_controller.stop()
     
-    def _process_joystick_data(self, data: str) -> None:
+    def _process_joystick_data(self, data: str, connection_id: int = 0) -> None:
         """Procesa datos del joystick con throttling."""
         current_time = time.time()
         
@@ -167,34 +191,38 @@ class OptimizedFlaskApp:
             x = float(joystick_data.get('x', 0))
             y = float(joystick_data.get('y', 0))
             
-            print(f"🎮 Joystick: x={x:.2f}, y={y:.2f}")  # Debug
+            if self.debug_mode and (x != 0 or y != 0):  # Solo log cuando hay movimiento
+                print(f"🎮 #{connection_id}: x={x:.2f}, y={y:.2f}")
             
             # Procesar solo si hay controlador
             if self.joystick_controller:
                 self.joystick_controller.process_joystick_input(x, y)
                 self._last_joystick_time = current_time
-                print(f"✅ Comando enviado a motores")  # Debug
-            else:
-                print(f"❌ No hay controlador de joystick disponible")  # Debug
+            elif self.debug_mode:
+                print("❌ No hay controlador de joystick disponible")
                 
         except json.JSONDecodeError as e:
-            print(f"❌ Error JSON: {e}")
+            if self.debug_mode:
+                print(f"❌ Error JSON en #{connection_id}: {e}")
         except (ValueError, TypeError) as e:
-            print(f"❌ Error de datos: {e}")
+            if self.debug_mode:
+                print(f"❌ Error de datos en #{connection_id}: {e}")
         except Exception as e:
-            print(f"❌ Error procesando joystick: {e}")
+            print(f"❌ Error procesando joystick en #{connection_id}: {e}")
     
     def get_app(self) -> Flask:
         """Obtiene la instancia de Flask."""
         return self.app
 
 
-def create_optimized_app() -> Flask:
+def create_optimized_app(debug: bool = False) -> Flask:
     """Crea la aplicación Flask optimizada."""
-    optimized_app = OptimizedFlaskApp()
+    optimized_app = OptimizedFlaskAppProduction(debug_mode=debug)
     return optimized_app.get_app()
 
 
 if __name__ == '__main__':
-    app = create_optimized_app()
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    import os
+    debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    app = create_optimized_app(debug=debug_mode)
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode, threaded=True)

@@ -46,6 +46,9 @@ function centerStick(){
 
 /* ====== WebSocket (last-write-wins) ====== */
 let ws=null, wsOpen=false, last={x:0,y:0}, sending=false, pending=false;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 10;
+const baseReconnectDelay = 500;
 
 function connectWS(){
     try{
@@ -55,19 +58,34 @@ function connectWS(){
         
         ws.onopen = ()=>{
             wsOpen=true; 
+            reconnectAttempts = 0; // Reset contador de reconexión
             document.getElementById('wsstat').textContent='ws: conectado'; 
             document.getElementById('wsstat').className='pill ok';
+            console.log('🔌 WebSocket conectado');
         };
         
-        ws.onclose = ()=>{
+        ws.onclose = (event)=>{
             wsOpen=false; 
-            document.getElementById('wsstat').textContent='ws: cerrado'; 
+            console.log(`🔌 WebSocket cerrado. Código: ${event.code}, Razón: ${event.reason}`);
+            
+            document.getElementById('wsstat').textContent='ws: reconectando…'; 
             document.getElementById('wsstat').className='pill bad';
-            setTimeout(connectWS, 500);
+            
+            // Reconexión automática con backoff exponencial
+            if (reconnectAttempts < maxReconnectAttempts) {
+                const delay = baseReconnectDelay * Math.pow(2, Math.min(reconnectAttempts, 5));
+                reconnectAttempts++;
+                console.log(`🔄 Reintentando conexión ${reconnectAttempts}/${maxReconnectAttempts} en ${delay}ms`);
+                setTimeout(connectWS, delay);
+            } else {
+                document.getElementById('wsstat').textContent='ws: error permanente'; 
+                console.error('❌ Máximo de intentos de reconexión alcanzado');
+            }
         };
         
-        ws.onerror = ()=>{
+        ws.onerror = (error)=>{
             wsOpen=false; 
+            console.error('❌ Error en WebSocket:', error);
             document.getElementById('wsstat').textContent='ws: error'; 
             document.getElementById('wsstat').className='pill bad';
             try{ws.close();}catch(e){}
@@ -77,16 +95,26 @@ function connectWS(){
             try{ 
                 const h=JSON.parse(ev.data); 
                 updateHUD(h); 
-            }catch(e){} 
+            }catch(e){
+                console.error('❌ Error parseando mensaje WebSocket:', e);
+            } 
         };
     }catch(e){ 
-        setTimeout(connectWS, 800); 
+        console.error('❌ Error creando WebSocket:', e);
+        if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = baseReconnectDelay * Math.pow(2, Math.min(reconnectAttempts, 3));
+            reconnectAttempts++;
+            setTimeout(connectWS, delay);
+        }
     }
 }
 
 function sendXY(x,y){
     last = {x,y};
-    if(!wsOpen) return;        // si no hay ws, descarta (no encola)
+    if(!wsOpen) {
+        console.log('⚠️ WebSocket no conectado, descartando datos');
+        return;
+    }
     if(!sending){ 
         pump(); 
     } else { 
@@ -98,15 +126,25 @@ function pump(){
     sending = true; 
     pending = false;
     try { 
-        ws.send(JSON.stringify(last)); 
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(last)); 
+            console.log(`📤 Enviado: x=${last.x.toFixed(2)}, y=${last.y.toFixed(2)}`);
+        } else {
+            console.warn('⚠️ WebSocket no está en estado OPEN');
+            sending = false;
+            wsOpen = false;
+            return;
+        }
     } catch(e){ 
+        console.error('❌ Error enviando datos WebSocket:', e);
         sending = false; 
+        wsOpen = false;
         return; 
     }
     // micro-cola: si llegó algo nuevo, manda otro frame en el próximo frame de pantalla
     requestAnimationFrame(()=>{
         sending = false;
-        if (pending) pump();
+        if (pending && wsOpen) pump();
     });
 }
 

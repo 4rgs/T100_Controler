@@ -34,7 +34,15 @@ def configure_system_limits():
 # Configurar antes de importar
 configure_system_limits()
 
-from src.web.flask_app_optimized import create_optimized_app
+# Verificar si usar modo debug
+debug_mode = os.environ.get('T100_DEBUG', 'false').lower() == 'true'
+
+if debug_mode:
+    print("🐛 Modo debug activado")
+    from src.web.flask_app_optimized import create_optimized_app
+else:
+    print("🚀 Modo producción activado")
+    from src.web.flask_app_production import create_optimized_app
 
 
 class MotorControlApp:
@@ -61,13 +69,13 @@ class MotorControlApp:
         try:
             print("Iniciando aplicación de control de motores optimizada...")
             
-            # Crear aplicación
-            self.app = create_optimized_app()
+            # Crear aplicación con modo debug
+            self.app = create_optimized_app(debug=debug_mode)
             
             # Configuración optimizada de Flask
             self.app.config.update({
                 'TESTING': False,
-                'DEBUG': debug,
+                'DEBUG': debug_mode,
                 'SEND_FILE_MAX_AGE_DEFAULT': 31536000,  # Cache estático 1 año
                 'MAX_CONTENT_LENGTH': 1024,  # 1KB máximo para requests
             })
@@ -103,11 +111,11 @@ def main():
     """Función principal."""
     app = MotorControlApp()
     
-    # Verificar argumentos
-    debug_mode = '--debug' in sys.argv
+    # Usar debug_mode global o argumentos de línea de comandos
+    final_debug_mode = debug_mode or '--debug' in sys.argv
     
     try:
-        app.run(debug=debug_mode)
+        app.run(debug=final_debug_mode)
     except Exception as e:
         print(f"Error fatal: {e}")
         sys.exit(1)

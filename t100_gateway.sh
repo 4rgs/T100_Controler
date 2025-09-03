@@ -201,6 +201,7 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 Environment=PYTHONUNBUFFERED=1
 Environment=T100_HOST=$T100_HOST
 Environment=T100_PORT=$T100_PORT
+Environment=T100_DEBUG=false
 ExecStartPre=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate'
 ExecStart=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate && python motor_control_optimized.py'
 ExecReload=/bin/bash $T100_INSTALL_DIR/t100_gateway.sh update
@@ -504,12 +505,39 @@ show_help() {
     echo "  stop        Detener servicio"
     echo "  start       Iniciar servicio"
     echo "  logs        Mostrar logs del servicio"
+    echo "  debug-on    Habilitar modo debug"
+    echo "  debug-off   Deshabilitar modo debug"
     echo ""
     echo "Variables de entorno:"
     echo "  T100_USER=$T100_USER"
     echo "  T100_INSTALL_DIR=$T100_INSTALL_DIR"
     echo "  T100_BRANCH=$T100_BRANCH"
     echo "  T100_PORT=$T100_PORT"
+}
+
+# Función para habilitar modo debug
+enable_debug_mode() {
+    log_info "🐛 Habilitando modo debug..."
+    
+    # Actualizar servicio systemd
+    sudo sed -i 's/Environment=T100_DEBUG=false/Environment=T100_DEBUG=true/' /etc/systemd/system/$T100_SERVICE_NAME.service
+    sudo systemctl daemon-reload
+    sudo systemctl restart $T100_SERVICE_NAME
+    
+    log_info "✅ Modo debug habilitado. Ver logs con: ./t100_gateway.sh logs"
+    log_warning "⚠️  El modo debug genera muchos logs. Deshabilitar en producción."
+}
+
+# Función para deshabilitar modo debug
+disable_debug_mode() {
+    log_info "🚀 Deshabilitando modo debug..."
+    
+    # Actualizar servicio systemd
+    sudo sed -i 's/Environment=T100_DEBUG=true/Environment=T100_DEBUG=false/' /etc/systemd/system/$T100_SERVICE_NAME.service
+    sudo systemctl daemon-reload
+    sudo systemctl restart $T100_SERVICE_NAME
+    
+    log_info "✅ Modo debug deshabilitado. Logs mínimos activados."
 }
 
 # Función principal
@@ -547,6 +575,12 @@ main() {
             ;;
         logs)
             journalctl -u $T100_SERVICE_NAME -f
+            ;;
+        debug-on)
+            enable_debug_mode
+            ;;
+        debug-off)
+            disable_debug_mode
             ;;
         help|--help|-h)
             show_help
