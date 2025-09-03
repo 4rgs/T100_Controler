@@ -22,7 +22,7 @@ fi
 # Variables
 OLD_SERVICE="web-motor.service"
 NEW_SERVICE="t100-controller-autoupdate.service"
-PROJECT_DIR="/opt/web-control/T100_Controler"
+PROJECT_DIR="/opt/web-motor/T100_Controler"
 
 # Detener servicio anterior si existe
 if systemctl is-active --quiet $OLD_SERVICE 2>/dev/null; then
