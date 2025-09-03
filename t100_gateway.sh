@@ -402,6 +402,91 @@ status() {
     echo "🌐 Acceso web: http://${ip}:${T100_PORT}"
 }
 
+# Función de verificación completa
+verify_system() {
+    log_info "🔍 Verificación completa del sistema T100 Controller..."
+    
+    echo ""
+    echo "📊 Estado del servicio:"
+    sudo systemctl status $T100_SERVICE_NAME --no-pager -l || true
+    
+    echo ""
+    echo "📋 Últimos 10 logs:"
+    journalctl -u $T100_SERVICE_NAME -n 10 --no-pager || true
+    
+    echo ""
+    echo "🌐 Verificando puerto $T100_PORT:"
+    if netstat -tlnp 2>/dev/null | grep -q ":$T100_PORT "; then
+        log_info "Puerto $T100_PORT está activo"
+        local ip=$(hostname -I | awk '{print $1}' 2>/dev/null || echo "localhost")
+        echo "🔗 Acceso web: http://$ip:$T100_PORT"
+    else
+        log_warning "Puerto $T100_PORT no está activo"
+    fi
+    
+    echo ""
+    echo "🔧 Recursos del sistema:"
+    if command -v free >/dev/null; then
+        free -h | head -2
+    fi
+    
+    if command -v top >/dev/null; then
+        top -bn1 | grep "Cpu(s)" | head -1 || true
+    fi
+    
+    if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+        local temp_raw=$(cat /sys/class/thermal/thermal_zone0/temp)
+        local temp=$(echo "scale=1; $temp_raw/1000" | bc 2>/dev/null || echo "N/A")
+        echo "🌡️  Temperatura: ${temp}°C"
+    fi
+    
+    echo ""
+    echo "📁 Verificando archivos de instalación:"
+    
+    if [ -d "$T100_INSTALL_DIR" ]; then
+        echo "✅ Directorio de instalación: $T100_INSTALL_DIR"
+        cd "$T100_INSTALL_DIR"
+        
+        if [ -f "motor_control_optimized.py" ]; then
+            echo "✅ motor_control_optimized.py existe"
+        else
+            echo "❌ motor_control_optimized.py no encontrado"
+        fi
+        
+        if [ -f "t100_gateway.sh" ]; then
+            echo "✅ t100_gateway.sh existe"
+        else
+            echo "❌ t100_gateway.sh no encontrado"
+        fi
+        
+        if [ -d "venv" ]; then
+            echo "✅ Entorno virtual existe"
+            if [ -f "venv/bin/python" ]; then
+                echo "✅ Python virtual disponible"
+            fi
+        else
+            echo "❌ Entorno virtual no encontrado"
+        fi
+        
+        if [ -d "src" ]; then
+            echo "✅ Directorio src/ existe"
+        else
+            echo "❌ Directorio src/ no encontrado"
+        fi
+        
+    else
+        echo "❌ Directorio de instalación no encontrado: $T100_INSTALL_DIR"
+    fi
+    
+    echo ""
+    echo "🚀 Comandos útiles:"
+    echo "   Ver logs en tiempo real: ./t100_gateway.sh logs"
+    echo "   Reiniciar servicio: ./t100_gateway.sh restart"
+    echo "   Ver estado: ./t100_gateway.sh status"
+    echo "   Monitorear recursos: ./t100_gateway.sh monitor"
+    echo "   Actualizar desde GitHub: ./t100_gateway.sh update"
+}
+
 # Función de ayuda
 show_help() {
     echo "T100 Controller Gateway - Script unificado"
@@ -413,6 +498,7 @@ show_help() {
     echo "  run         Ejecutar en modo directo (sin servicio)"
     echo "  update      Actualizar desde repositorio"
     echo "  status      Mostrar estado del sistema"
+    echo "  verify      Verificación completa del sistema"
     echo "  monitor     Monitorear recursos en tiempo real"
     echo "  restart     Reiniciar servicio"
     echo "  stop        Detener servicio"
@@ -443,6 +529,9 @@ main() {
             ;;
         monitor)
             monitor_resources
+            ;;
+        verify)
+            verify_system
             ;;
         restart)
             sudo systemctl restart $T100_SERVICE_NAME
