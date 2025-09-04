@@ -2,20 +2,23 @@ version: '3.8'
 
 services:
   t100-client:
-    image: nginx:alpine
+    image: httpd:alpine
     container_name: t100-web-client
     ports:
-      - "8080:80"
-    command: |
-      sh -c "
-        apk add --no-cache wget &&
-        wget -O /usr/share/nginx/html/index.html https://raw.githubusercontent.com/4rgs/T100_Controler/develop/client.html &&
-        nginx -g 'daemon off;'
-      "
+      - "8084:80"
+    environment:
+      - GITHUB_URL=https://raw.githubusercontent.com/4rgs/T100_Controler/develop/client.html
+    command: 
+      - sh
+      - -c
+      - |
+        wget -O /usr/local/apache2/htdocs/index.html https://raw.githubusercontent.com/4rgs/T100_Controler/develop/client.html &&
+        httpd-foreground
     restart: unless-stopped
     labels:
       - "casaos.name=T100 Web Controller"
       - "casaos.description=Cliente web para control del robot T100"
-      - "casaos.category=Tools"
-      - "casaos.icon=🤖"
-      - "casaos.main=http://localhost:8080"
+      - "casaos.category=Utilities"
+      - "casaos.icon=https://cdn-icons-png.flaticon.com/512/2933/2933245.png"
+      - "casaos.port_map=8084"
+      - "casaos.scheme=http"
