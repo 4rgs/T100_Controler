@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T100 Controller - Cliente de Desarrollo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-areas: 
+                "header header"
+                "controls status"
+                "joystick logs";
+            grid-template-rows: 60px 1fr 1fr;
+            grid-template-columns: 2fr 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        .header {
+            grid-area: header;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        .controls {
+            grid-area: controls;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .status {
+            grid-area: status;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .joystick {
+            grid-area: joystick;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logs {
+            grid-area: logs;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.connected {
+            background: #44ff44;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .input-group label {
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .input-group input {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 16px;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        .btn.danger {
+            background: #f44336;
+        }
+        
+        .btn.danger:hover {
+            background: #da190b;
+        }
+        
+        .joystick-container {
+            width: 200px;
+            height: 200px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            position: relative;
+            background: rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        
+        .joystick-knob {
+            width: 40px;
+            height: 40px;
+            background: #4CAF50;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .value-display {
+            margin-top: 20px;
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-family: monospace;
+            padding: 5px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .log-entry.error {
+            background: rgba(255,0,0,0.2);
+        }
+        
+        .log-entry.success {
+            background: rgba(0,255,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 T100 Controller - Cliente de Desarrollo</h1>
+            <div class="connection-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="connectionStatus">Desconectado</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <h3>🔌 Configuración de Conexión</h3>
+            <div class="input-group">
+                <label for="apiUrl">URL de la API:</label>
+                <input type="text" id="apiUrl" value="http://192.168.1.100:5000" placeholder="http://IP_RASPBERRY:5000">
+            </div>
+            <button class="btn" onclick="connectToAPI()">🔗 Conectar</button>
+            <button class="btn" onclick="testConnection()">🧪 Probar Conexión</button>
+            <button class="btn danger" onclick="emergencyStop()">🛑 PARADA DE EMERGENCIA</button>
+        </div>
+        
+        <div class="status">
+            <h3>📊 Estado del Sistema</h3>
+            <div id="systemStatus">
+                <p>Estado: <span id="systemState">Desconocido</span></p>
+                <p>Versión: <span id="systemVersion">-</span></p>
+                <p>Modo: <span id="systemMode">-</span></p>
+                <hr style="margin: 10px 0; opacity: 0.3;">
+                <h4>Motores:</h4>
+                <p>Motor A: <span id="motorA">-</span></p>
+                <p>Motor B: <span id="motorB">-</span></p>
+                <p>Última actualización: <span id="lastUpdate">-</span></p>
+            </div>
+        </div>
+        
+        <div class="joystick">
+            <h3>🕹️ Control Virtual</h3>
+            <div class="joystick-container" id="joystickContainer">
+                <div class="joystick-knob" id="joystickKnob"></div>
+            </div>
+            <div class="value-display">
+                X: <span id="xValue">0.000</span><br>
+                Y: <span id="yValue">0.000</span><br>
+                Latencia: <span id="latency">-</span>ms
+            </div>
+        </div>
+        
+        <div class="logs">
+            <h3>📝 Logs de Actividad</h3>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        class T100Client {
+            constructor() {
+                this.apiUrl = '';
+                this.connected = false;
+                this.joystickActive = false;
+                this.joystickX = 0;
+                this.joystickY = 0;
+                this.lastSendTime = 0;
+                
+                this.initJoystick();
+                this.startPeriodicUpdate();
+            }
+            
+            log(message, type = 'info') {
+                const logContainer = document.getElementById('logContainer');
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+                logContainer.appendChild(logEntry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+                
+                // Mantener solo los últimos 100 logs
+                while (logContainer.children.length > 100) {
+                    logContainer.removeChild(logContainer.firstChild);
+                }
+            }
+            
+            async connectToAPI() {
+                this.apiUrl = document.getElementById('apiUrl').value.trim();
+                if (!this.apiUrl) {
+                    this.log('URL de API requerida', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}/api/status`);
+                    const data = await response.json();
+                    
+                    this.connected = true;
+                    this.updateConnectionStatus(true);
+                    this.updateSystemStatus(data);
+                    this.log(`Conectado a ${this.apiUrl}`, 'success');
+                    
+                } catch (error) {
+                    this.connected = false;
+                    this.updateConnectionStatus(false);
+                    this.log(`Error de conexión: ${error.message}`, 'error');
+                }
+            }
+            
+            async testConnection() {
+                if (!this.apiUrl) {
+                    this.log('Primero conecta a la API', 'error');
+                    return;
+                }
+                
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(`${this.apiUrl}/api/status`);
+                    const latency = Date.now() - startTime;
+                    
+                    if (response.ok) {
+                        this.log(`Conexión OK - Latencia: ${latency}ms`, 'success');
+                        document.getElementById('latency').textContent = latency;
+                    } else {
+                        this.log(`Error HTTP: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    this.log(`Test falló: ${error.message}`, 'error');
+                }
+            }
+            
+            async emergencyStop() {
+                if (!this.connected) {
+                    this.log('No hay conexión con la API', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${this.apiUrl}/api/emergency/stop`, {
+                        method: 'POST'
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.log('PARADA DE EMERGENCIA EJECUTADA', 'success');
+                    } else {
+                        this.log(`Error en parada de emergencia: ${data.error}`, 'error');
+                    }
+                } catch (error) {
+                    this.log(`Error enviando parada de emergencia: ${error.message}`, 'error');
+                }
+            }
+            
+            updateConnectionStatus(connected) {
+                const dot = document.getElementById('statusDot');
+                const status = document.getElementById('connectionStatus');
+                
+                if (connected) {
+                    dot.classList.add('connected');
+                    status.textContent = 'Conectado';
+                } else {
+                    dot.classList.remove('connected');
+                    status.textContent = 'Desconectado';
+                }
+            }
+            
+            updateSystemStatus(data) {
+                document.getElementById('systemState').textContent = data.status || '-';
+                document.getElementById('systemVersion').textContent = data.version || '-';
+                document.getElementById('systemMode').textContent = data.mode || '-';
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            }
+            
+            initJoystick() {
+                const container = document.getElementById('joystickContainer');
+                const knob = document.getElementById('joystickKnob');
+                
+                let isDragging = false;
+                
+                const startDrag = (e) => {
+                    isDragging = true;
+                    this.joystickActive = true;
+                };
+                
+                const stopDrag = () => {
+                    isDragging = false;
+                    this.joystickActive = false;
+                    
+                    // Volver al centro
+                    knob.style.left = '50%';
+                    knob.style.top = '50%';
+                    this.joystickX = 0;
+                    this.joystickY = 0;
+                    this.updateJoystickDisplay();
+                    this.sendControlData();
+                };
+                
+                const drag = (e) => {
+                    if (!isDragging) return;
+                    
+                    const rect = container.getBoundingClientRect();
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    
+                    let x = (e.clientX - rect.left) - centerX;
+                    let y = (e.clientY - rect.top) - centerY;
+                    
+                    // Limitar al círculo
+                    const distance = Math.sqrt(x * x + y * y);
+                    const maxDistance = centerX - 20;
+                    
+                    if (distance > maxDistance) {
+                        x = (x / distance) * maxDistance;
+                        y = (y / distance) * maxDistance;
+                    }
+                    
+                    // Normalizar valores (-1 a 1)
+                    this.joystickX = x / maxDistance;
+                    this.joystickY = -y / maxDistance; // Invertir Y
+                    
+                    // Actualizar posición visual
+                    knob.style.left = `${50 + (x / centerX) * 50}%`;
+                    knob.style.top = `${50 + (y / centerY) * 50}%`;
+                    
+                    this.updateJoystickDisplay();
+                    this.sendControlData();
+                };
+                
+                knob.addEventListener('mousedown', startDrag);
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', stopDrag);
+                
+                // Touch events para móviles
+                knob.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    startDrag(e.touches[0]);
+                });
+                
+                document.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    if (isDragging) drag(e.touches[0]);
+                });
+                
+                document.addEventListener('touchend', stopDrag);
+            }
+            
+            updateJoystickDisplay() {
+                document.getElementById('xValue').textContent = this.joystickX.toFixed(3);
+                document.getElementById('yValue').textContent = this.joystickY.toFixed(3);
+            }
+            
+            async sendControlData() {
+                if (!this.connected || !this.joystickActive) return;
+                
+                // Throttle: enviar máximo cada 50ms
+                const now = Date.now();
+                if (now - this.lastSendTime < 50) return;
+                this.lastSendTime = now;
+                
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(`${this.apiUrl}/api/control`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            x: this.joystickX,
+                            y: this.joystickY,
+                            timestamp: now
+                        })
+                    });
+                    
+                    const latency = Date.now() - startTime;
+                    document.getElementById('latency').textContent = latency;
+                    
+                    if (!response.ok) {
+                        this.log(`Error enviando control: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    this.log(`Error de red: ${error.message}`, 'error');
+                }
+            }
+            
+            startPeriodicUpdate() {
+                setInterval(async () => {
+                    if (this.connected) {
+                        try {
+                            const response = await fetch(`${this.apiUrl}/api/motors/status`);
+                            const data = await response.json();
+                            
+                            // Actualizar estado de motores si está disponible
+                            if (data.motor_a !== undefined) {
+                                document.getElementById('motorA').textContent = `${data.motor_a}%`;
+                            }
+                            if (data.motor_b !== undefined) {
+                                document.getElementById('motorB').textContent = `${data.motor_b}%`;
+                            }
+                            
+                        } catch (error) {
+                            // No hacer log de estos errores menores
+                        }
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Inicializar cliente
+        const client = new T100Client();
+        
+        // Funciones globales para los botones
+        function connectToAPI() {
+            client.connectToAPI();
+        }
+        
+        function testConnection() {
+            client.testConnection();
+        }
+        
+        function emergencyStop() {
+            client.emergencyStop();
+        }
+    </script>
+</body>
+</html>

@@ -15,6 +15,7 @@ export T100_BRANCH="${T100_BRANCH:-develop}"
 export T100_SERVICE_NAME="${T100_SERVICE_NAME:-t100-controller}"
 export T100_PORT="${T100_PORT:-5000}"
 export T100_HOST="${T100_HOST:-0.0.0.0}"
+export T100_MODE="${T100_MODE:-api}"  # Modo por defecto: solo API
 
 # Colores para output
 RED='\033[0;31m'
@@ -208,14 +209,20 @@ cleanup_old_services() {
 
 # Crear servicio systemd
 create_systemd_service() {
-    log_info "Creando servicio systemd optimizado..."
+    log_info "Creando servicio systemd optimizado para modo $T100_MODE..."
     
     # Limpiar servicios antiguos
     cleanup_old_services
     
+    # Determinar qué archivo ejecutar según el modo
+    local exec_file="api_main.py"
+    if [[ "$T100_MODE" == "web" ]]; then
+        exec_file="main.py"
+    fi
+    
     sudo tee /etc/systemd/system/$T100_SERVICE_NAME.service > /dev/null << EOF
 [Unit]
-Description=T100 Controller Service
+Description=T100 Controller Service (Mode: $T100_MODE)
 After=network.target pigpiod.service
 Wants=network.target
 Requires=pigpiod.service
@@ -231,19 +238,20 @@ Environment=PYTHONUNBUFFERED=1
 Environment=T100_HOST=$T100_HOST
 Environment=T100_PORT=$T100_PORT
 Environment=T100_DEBUG=false
+Environment=T100_MODE=$T100_MODE
 ExecStartPre=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate'
-ExecStart=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate && python main.py'
+ExecStart=/bin/bash -c 'cd $T100_INSTALL_DIR && source venv/bin/activate && python $exec_file'
 ExecReload=/bin/bash $T100_INSTALL_DIR/t100_gateway.sh update
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
-# Optimizaciones de recursos
+# Optimizaciones específicas para RPI Zero 2W
 Nice=10
-CPUQuota=80%
-MemoryLimit=128M
-TasksMax=50
+CPUQuota=60%
+MemoryLimit=96M
+TasksMax=30
 
 # Configuración de seguridad
 NoNewPrivileges=true
@@ -258,7 +266,7 @@ WantedBy=multi-user.target
 EOF
     
     sudo systemctl daemon-reload
-    log_info "Servicio systemd creado: $T100_SERVICE_NAME"
+    log_info "Servicio systemd creado: $T100_SERVICE_NAME (ejecutando $exec_file)"
 }
 
 # Auto-actualización
@@ -601,12 +609,15 @@ show_help() {
     echo "  logs        Mostrar logs del servicio"
     echo "  debug-on    Habilitar modo debug"
     echo "  debug-off   Deshabilitar modo debug"
+    echo "  api-mode    Configurar solo API (para RPI)"
+    echo "  web-mode    Configurar frontend completo"
     echo ""
     echo "Variables de entorno:"
     echo "  T100_USER=$T100_USER"
     echo "  T100_INSTALL_DIR=$T100_INSTALL_DIR"
     echo "  T100_BRANCH=$T100_BRANCH"
     echo "  T100_PORT=$T100_PORT"
+    echo "  T100_MODE=$T100_MODE"
 }
 
 # Función para habilitar modo debug
@@ -622,6 +633,43 @@ enable_debug_mode() {
     log_warning "⚠️  El modo debug genera muchos logs. Deshabilitar en producción."
 }
 
+# Función para cambiar a modo API únicamente
+set_api_mode() {
+    log_info "� Configurando modo API únicamente..."
+    
+    export T100_MODE="api"
+    
+    # Actualizar variables de entorno en el script
+    sed -i 's/export T100_MODE=.*/export T100_MODE="api"/' "$0"
+    
+    # Recrear servicio
+    create_systemd_service
+    
+    # Reiniciar servicio
+    sudo systemctl daemon-reload
+    sudo systemctl restart $T100_SERVICE_NAME
+    
+    log_info "✅ Modo API configurado. Solo endpoints API disponibles."
+    log_info "📡 Acceso API: http://$(hostname -I | awk '{print $1}'):$T100_PORT/api/"
+}
+
+# Función para cambiar a modo WEB completo
+set_web_mode() {
+    log_info "🌐 Configurando modo WEB completo..."
+    
+    export T100_MODE="web"
+    
+    # Actualizar variables de entorno en el script
+    sed -i 's/export T100_MODE=.*/export T100_MODE="web"/' "$0"
+    
+    # Recrear servicio
+    create_systemd_service
+    
+    # Reiniciar servicio
+    sudo systemctl daemon-reload
+    sudo systemctl restart $T100_SERVICE_NAME
+    
+    log_info "✅ Modo WEB configurado. Frontend + API disponibles."
 # Función para deshabilitar modo debug
 disable_debug_mode() {
     log_info "🚀 Deshabilitando modo debug..."
@@ -681,6 +729,12 @@ main() {
             ;;
         debug-off)
             disable_debug_mode
+            ;;
+        api-mode)
+            set_api_mode
+            ;;
+        web-mode)
+            set_web_mode
             ;;
         help|--help|-h)
             show_help
