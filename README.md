@@ -1,260 +1,240 @@
-# T100 Controller - Gateway Unificado 🚀
+# T100 Controller - Versión Simplificada
 
-Sistema de control de motores T100 optimizado para Raspberry Pi con **gateway unificado** que maneja instalación, actualización y ejecución en un solo script.
+Control remoto para vehículo T100 mediante WebSocket API.
 
-## 🌟 Características
+## Hardware
+- **Raspberry Pi Zero 2W**
+- **Driver L298N** para motores DC
+- **Motores DC** (2x)
 
-- **🎮 Control por joystick virtual y gamepad físico** con soporte para controles de drone
-- **📊 Monitor de recursos en tiempo real** integrado en la interfaz web
-- **⚡ Optimizado para mínimo uso de recursos** (CPU, RAM, red)
-- **🔧 Gateway unificado** - un solo script para todo
-- **🔄 Auto-actualización automática** desde GitHub
-- **🚀 Inicio automático** con el sistema
-- **📱 Interfaz web responsive** con diseño moderno
-- **🛡️ Manejo robusto de errores** y recuperación automática
+## Arquitectura
+- **Servidor**: Python con WebSocket (pigpio + websockets)
+- **Cliente**: HTML5 + JavaScript (joystick virtual)
+- **Comunicación**: WebSocket en tiempo real
 
-## 🚀 Instalación Ultra-Rápida
+## Instalación en Raspberry Pi
 
-### Instalación en una línea
+1. **Clonar el repositorio**:
 ```bash
-# Instalación completa automática (usuario 4rgs)
-curl -sSL https://raw.githubusercontent.com/4rgs/T100_Controler/develop/t100_gateway.sh | bash -s install
+git clone <repo_url>
+cd t100
 ```
 
-### Instalación manual
+2. **Ejecutar instalación automática**:
 ```bash
-# Clonar repositorio
-git clone https://github.com/4rgs/T100_Controler.git
-cd T100_Controler
-
-# Ejecutar instalación completa
-./t100_gateway.sh install
+./install.sh
 ```
 
-## 🔧 Uso del Gateway
-
-### Comandos principales
+3. **Iniciar servicio**:
 ```bash
-./t100_gateway.sh install     # Instalación completa
-./t100_gateway.sh run         # Ejecutar en modo directo
-./t100_gateway.sh status      # Ver estado del sistema
-./t100_gateway.sh update      # Actualizar desde GitHub
-./t100_gateway.sh monitor     # Monitorear recursos
-./t100_gateway.sh restart     # Reiniciar servicio
-./t100_gateway.sh logs        # Ver logs en tiempo real
+sudo systemctl enable t100
+sudo systemctl start t100
 ```
 
-### Variables de entorno
-```bash
-export T100_USER="4rgs"                                    # Usuario del sistema
-export T100_INSTALL_DIR="/opt/web-motor/T100-Controler" # Directorio de instalación
-export T100_BRANCH="develop"                              # Rama de GitHub
-export T100_PORT="5000"                                   # Puerto web
-```
+## Configuración de Hardware
 
-## 📱 Acceso Web
+Editar `config.py` según tu conexión L298N:
 
-### Interfaz Principal
-- **URL**: `http://[IP_RASPBERRY]:5000`
-- Monitor de recursos integrado (CPU, RAM, temperatura)
-- Joystick virtual y soporte para gamepad físico
-- Controles de drone para gamepad físico (eje Y invertido)
-
-### Controles
-- **Joystick virtual**: Arrastrar en pantalla
-- **Gamepad físico**: Automáticamente detectado (Y invertido para control tipo drone)
-- **Parada de emergencia**: Botón rojo o tecla Espacio
-
-### Scripts de Gestión
-```bash
-# Iniciar manualmente
-./start_optimized.sh
-
-# Verificar estado del sistema
-./check_system.sh
-
-# Ver logs en tiempo real
-journalctl -u motor-control-optimized -f
-
-# Actualizar sistema
-./update_system.sh
-```
-
-## 📊 Monitor de Recursos
-
-La interfaz web incluye un panel de monitoreo que muestra:
-
-- **CPU**: Porcentaje de uso en tiempo real
-- **RAM**: Uso de memoria y MB consumidos
-- **Temperatura**: Temperatura del CPU (Raspberry Pi)
-- **Latencia**: Tiempo de respuesta de la aplicación
-- **Alertas**: Avisos cuando el sistema está sobrecargado
-
-## 🏗️ Estructura del Proyecto
-
-```
-T100_Controler/
-├── 📁 src/
-│   ├── 📁 config/          # Configuración del sistema
-│   ├── 📁 hardware/        # Drivers optimizados
-│   ├── 📁 control/         # Controladores de joystick
-│   ├── 📁 web/            # Aplicación web Flask
-│   ├── 📁 utils/          # Utilidades (monitor de recursos)
-│   └── 📁 templates/      # Plantillas HTML
-├── 🚀 motor_control_optimized.py  # Aplicación principal
-├── 🛠️ auto_install.sh            # Auto-instalación
-├── ⚙️ optimize_system.sh          # Optimización del sistema
-├── 🔄 update_system.sh           # Actualización automática
-├── ▶️ start_optimized.sh         # Inicio rápido
-└── 📄 requirements_optimized.txt # Dependencias mínimas
-```
-
-## ⚡ Optimizaciones Implementadas
-
-### Memoria
-- Límite de 256MB de memoria virtual
-- `__slots__` en todas las clases
-- Garbage collection agresivo
-- Sin archivos `.pyc`
-
-### CPU
-- Throttling inteligente (50 Hz para WebSocket)
-- Cache de estados para evitar cálculos repetidos
-- Solo procesa cambios significativos (>1%)
-- CPU governor en modo performance
-
-### Red
-- WebSocket optimizado con timeout
-- Compresión de datos de joystick
-- Buffer deshabilitado
-
-### Sistema
-- Servicios systemd con límites de recursos
-- Prioridad optimizada del proceso
-- Monitor de recursos sin dependencias externas
-
-## 🔧 Configuración Avanzada
-
-### Pines del Motor (L298N)
 ```python
-# src/config/settings.py
-motor_a_pins = MotorPins(enable=18, in1=23, in2=24)
-motor_b_pins = MotorPins(enable=25, in1=27, in2=22)
+DEFAULT_CONFIG = {
+    "hardware": HardwareConfig(
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),  # Motor izquierdo
+        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False),  # Motor derecho
+        pwm_frequency=1000
+    ),
+    "server": ServerConfig(
+        host="0.0.0.0",
+        port=8080,
+        debug=False
+    )
+}
 ```
 
-### Límites de Recursos
-```bash
-# Memoria máxima: 128MB
-# CPU máximo: 80%
-# Procesos máximos: 50
+### Conexiones L298N → RPi Zero 2W
+- **Motor A (Izquierdo)**:
+  - ENA → GPIO 12 (PWM)
+  - IN1 → GPIO 16
+  - IN2 → GPIO 20
+  
+- **Motor B (Derecho)**:
+  - ENB → GPIO 26 (PWM)
+  - IN3 → GPIO 21
+  - IN4 → GPIO 19
+
+## Uso
+
+### 1. Cliente Web
+Abrir `client.html` en el navegador:
+- Configurar IP del Raspberry Pi
+- Conectar al servidor
+- Usar joystick virtual para controlar
+
+### 2. API WebSocket
+
+**Conectar**: `ws://IP_RPI:8080`
+
+**Comandos disponibles**:
+
+```json
+// Control tank drive (recomendado)
+{
+  "type": "tank_drive",
+  "forward": 0.5,  // -1.0 a 1.0 (atrás/adelante)
+  "turn": 0.3      // -1.0 a 1.0 (izq/der)
+}
+
+// Control directo de motores
+{
+  "type": "motor_control",
+  "left": 0.5,     // Motor izquierdo (-1.0 a 1.0)
+  "right": 0.7     // Motor derecho (-1.0 a 1.0)
+}
+
+// Parar motores
+{
+  "type": "stop"
+}
+
+// Ping (test latencia)
+{
+  "type": "ping"
+}
+
+// Estado del sistema
+{
+  "type": "status"
+}
 ```
 
-### Variables de Entorno
-```bash
-PYTHONDONTWRITEBYTECODE=1  # Sin archivos .pyc
-PYTHONUNBUFFERED=1         # Sin buffer de salida
+## Archivos del Proyecto
+
+```
+t100/
+├── config.py          # Configuración de hardware y servidor
+├── l298n_driver.py     # Driver para L298N con pigpio
+├── server.py           # Servidor WebSocket API
+├── client.html         # Cliente web con joystick
+├── calibrate_motors.py # Script de calibración de motores
+├── requirements.txt    # Dependencias Python
+├── install.sh          # Script de instalación automática
+└── README.md          # Este archivo
 ```
 
-## 🚨 Solución de Problemas
+## Calibración de Motores
 
-### Aplicación se cuelga
+Los motores DC pueden tener velocidades ligeramente diferentes. Para calibrarlos:
+
+### 1. Calibración Automática (Recomendado)
+
 ```bash
-# Verificar recursos
-./check_system.sh
+# En el Raspberry Pi
+python3 calibrate_motors.py
+```
+
+El script te guiará paso a paso para:
+- Probar cada motor individualmente
+- Probar movimiento adelante
+- Detectar desviaciones
+- Sugerir valores de calibración
+
+### 2. Calibración Manual
+
+Editar `config.py` y ajustar los `power_factor`:
+
+```python
+DEFAULT_CONFIG = {
+    "hardware": HardwareConfig(
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False, power_factor=1.0),   # Motor izq
+        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False, power_factor=0.85),  # Motor der
+        pwm_frequency=1000
+    ),
+    ...
+}
+```
+
+### 3. Configuraciones Predefinidas
+
+```python
+from config import get_calibrated_config
+
+# Usar configuración predefinida
+config = get_calibrated_config("drift_left")  # Si se desvía a la izquierda
+config = get_calibrated_config("motor_a_fast") # Si Motor A es más rápido
+```
+
+**Configuraciones disponibles**:
+- `motor_a_fast`: Motor A más rápido
+- `motor_b_fast`: Motor B más rápido  
+- `drift_left`: Se desvía a la izquierda
+- `drift_right`: Se desvía a la derecha
+
+### 4. Valores Típicos
+
+- **1.0** = Sin calibración (normal)
+- **0.9** = Reducir 10% la potencia
+- **0.8** = Reducir 20% la potencia
+- **0.7** = Reducir 30% la potencia
+
+## Comandos Útiles
+
+```bash
+# Ver logs del servidor
+sudo journalctl -u t100 -f
 
 # Reiniciar servicio
-sudo systemctl restart motor-control-optimized
+sudo systemctl restart t100
 
-# Ver logs
-journalctl -u motor-control-optimized -f
+# Detener servicio
+sudo systemctl stop t100
+
+# Ejecutar manualmente (debug)
+cd t100
+source venv/bin/activate
+python3 server.py
+
+# Test del driver (solo motores)
+python3 l298n_driver.py
 ```
 
-### Puerto 5000 ocupado
+## Solución de Problemas
+
+### 1. Error "pigpio no conectado"
 ```bash
-# Encontrar proceso
-sudo netstat -tulpn | grep :5000
-
-# Matar proceso
-sudo kill -9 [PID]
+sudo systemctl start pigpiod
+sudo systemctl enable pigpiod
 ```
 
-### Pigpiod no inicia
+### 2. Permisos GPIO
 ```bash
-# Verificar estado
-sudo systemctl status pigpiod
-
-# Reiniciar
-sudo systemctl restart pigpiod
+sudo usermod -a -G gpio 4rgs
 ```
 
-## 📈 Monitoreo y Logs
+### 3. Motores no responden
+- Verificar conexiones L298N
+- Comprobar alimentación motores (VCC L298N)
+- Revisar `config.py` para pines correctos
 
-### Logs del Sistema
+### 4. WebSocket no conecta
+- Verificar IP del Raspberry Pi
+- Comprobar puerto 8080 abierto
+- Ver logs: `sudo journalctl -u t100 -f`
+
+## Desarrollo
+
+Para desarrollo local (sin hardware):
 ```bash
-# Logs de la aplicación
-journalctl -u motor-control-optimized -f
-
-# Logs de pigpiod
-journalctl -u pigpiod -f
-
-# Logs de actualización
-tail -f /var/log/t100-update.log
+python3 -m venv venv
+source venv/bin/activate
+pip install websockets
+python3 server.py  # Funcionará sin pigpio para desarrollo
 ```
 
-### Alertas de Recursos
-- **CPU > 80%**: Alerta amarilla
-- **RAM > 85%**: Alerta roja
-- **Temp > 70°C**: Alerta crítica
+## Características
 
-## 🔄 Auto-actualización
-
-El sistema incluye actualización automática desde el repositorio:
-
-```bash
-# Configurar webhook (opcional)
-# El script update_system.sh se puede llamar desde GitHub Actions
-# o configurar como cron job:
-
-# Editar crontab
-crontab -e
-
-# Agregar línea para verificar actualizaciones cada hora
-0 * * * * /opt/web-motor/T100-Controler/update_system.sh
-```
-
-## 🏆 Rendimiento
-
-### Comparativa vs. Versión Original
-- **80% menos uso de memoria**
-- **60% menos uso de CPU** 
-- **Eliminación de cuelgues** por throttling inteligente
-- **Respuesta más fluida** con cache de estados
-- **Monitor integrado** sin impacto en rendimiento
-
-### Benchmarks
-```bash
-# Ejecutar test de rendimiento
-python3 benchmark_performance.py
-```
-
-## 🤝 Contribuir
-
-1. Fork del repositorio
-2. Crear rama feature (`git checkout -b feature/nueva-caracteristica`)
-3. Commit cambios (`git commit -am 'Agregar nueva característica'`)
-4. Push a la rama (`git push origin feature/nueva-caracteristica`)
-5. Crear Pull Request
-
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
-
-## 🙏 Agradecimientos
-
-- **pigpio**: Por la excelente librería de GPIO
-- **Flask**: Por el framework web ligero
-- **Comunidad Raspberry Pi**: Por el soporte y documentación
-
----
-
-🚀 **¡Optimizado para máximo rendimiento en Raspberry Pi!** 🚀
+- ✅ **Ultra simple**: Solo 4 archivos principales
+- ✅ **Tiempo real**: WebSocket de baja latencia
+- ✅ **Joystick virtual**: Control intuitivo desde navegador
+- ✅ **Tank drive**: Control natural tipo tanque
+- ✅ **Autoinstalación**: Script automático para RPi
+- ✅ **Servicio systemd**: Inicio automático
+- ✅ **Mobile friendly**: Funciona en móviles

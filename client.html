@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T100 Controller - Cliente Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #0a182f);
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .status {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .status.connected {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #00ff00;
+        }
+
+        .status.disconnected {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff0000;
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .joystick-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+
+        .joystick {
+            width: 200px;
+            height: 200px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .joystick::before {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+
+        /* Círculo interno para mostrar área de movimiento */
+        .joystick::after {
+            content: '';
+            position: absolute;
+            width: calc(100% - 60px); /* Radio efectivo */
+            height: calc(100% - 60px);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+        }
+
+        .joystick:active {
+            cursor: grabbing;
+        }
+
+        .joystick-knob {
+            width: 40px;
+            height: 40px;
+            background: #fff;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            transition: none; /* Removido para mejor respuesta */
+            z-index: 2;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: #3b5167;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #081c31;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+            transform: translateY(-2px);
+        }
+
+        .connection-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input[type="text"] {
+            padding: 8px 12px;
+            margin: 0 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .info {
+            margin-top: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .values {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .joystick-container {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .joystick {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 T100 Controller</h1>
+        
+        <div id="status" class="status disconnected">
+            Desconectado
+        </div>
+
+        <div class="control-panel">
+            <div>
+                <h3>Control de Movimiento</h3>
+                <div class="joystick-container">
+                    <div id="joystick" class="joystick">
+                        <div id="joystick-knob" class="joystick-knob"></div>
+                    </div>
+                </div>
+                <div class="info">
+                    Arriba/Abajo: Adelante/Atrás<br>
+                    Izquierda/Derecha: Giro
+                </div>
+            </div>
+
+            <div class="buttons">
+                <h3>Controles</h3>
+                <button id="btn-stop" class="btn-danger">🛑 PARAR</button>
+                <button id="btn-calibrate" class="btn-secondary">🎯 Calibrar</button>
+                <button id="btn-ping" class="btn-secondary">📡 Ping</button>
+                <button id="btn-status" class="btn-secondary">📊 Estado</button>
+                
+                <div class="connection-panel">
+                    <h4>Conexión</h4>
+                    <input type="text" id="server-ip" placeholder="IP del servidor" value="192.168.1.100">
+                    <input type="text" id="server-port" placeholder="Puerto" value="8080">
+                    <br><br>
+                    <button id="btn-connect" class="btn-primary">🔌 Conectar</button>
+                    <button id="btn-disconnect" class="btn-secondary">❌ Desconectar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="values">
+            <div>Forward: <span id="forward-value">0.00</span></div>
+            <div>Turn: <span id="turn-value">0.00</span></div>
+            <div>Left Motor: <span id="left-value">0.00</span></div>
+            <div>Right Motor: <span id="right-value">0.00</span></div>
+            <div>X Raw: <span id="x-raw-value">0.00</span></div>
+            <div>Y Raw: <span id="y-raw-value">0.00</span></div>
+        </div>
+    </div>
+
+    <script>
+        class T100Controller {
+            constructor() {
+                this.ws = null;
+                this.isConnected = false;
+                this.joystickActive = false;
+                this.currentX = 0;
+                this.currentY = 0;
+                
+                this.initElements();
+                this.initJoystick();
+                this.initEventListeners();
+            }
+
+            initElements() {
+                this.statusEl = document.getElementById('status');
+                this.joystickEl = document.getElementById('joystick');
+                this.knobEl = document.getElementById('joystick-knob');
+                this.serverIpEl = document.getElementById('server-ip');
+                this.serverPortEl = document.getElementById('server-port');
+                
+                // Elementos de valores
+                this.forwardValueEl = document.getElementById('forward-value');
+                this.turnValueEl = document.getElementById('turn-value');
+                this.leftValueEl = document.getElementById('left-value');
+                this.rightValueEl = document.getElementById('right-value');
+                this.xRawValueEl = document.getElementById('x-raw-value');
+                this.yRawValueEl = document.getElementById('y-raw-value');
+            }
+
+            initJoystick() {
+                const joystick = this.joystickEl;
+
+                // Mouse events
+                joystick.addEventListener('mousedown', (e) => this.startJoystick(e));
+                document.addEventListener('mousemove', (e) => this.moveJoystick(e));
+                document.addEventListener('mouseup', () => this.endJoystick());
+
+                // Touch events para móviles
+                joystick.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    this.startJoystick(touch);
+                });
+                
+                document.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    if (e.touches.length > 0) {
+                        const touch = e.touches[0];
+                        this.moveJoystick(touch);
+                    }
+                });
+                
+                document.addEventListener('touchend', () => this.endJoystick());
+            }
+
+            getJoystickParams() {
+                const rect = this.joystickEl.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const maxRadius = Math.min(centerX, centerY) - 30; // Radio efectivo sin tocar el borde
+                return { rect, centerX, centerY, maxRadius };
+            }
+
+            startJoystick(event) {
+                this.joystickActive = true;
+                this.joystickEl.style.cursor = 'grabbing';
+            }
+
+            moveJoystick(event) {
+                if (!this.joystickActive) return;
+
+                const { rect, centerX, centerY, maxRadius } = this.getJoystickParams();
+                
+                // Calcular posición relativa al centro del joystick
+                const mouseX = (event.clientX || event.pageX) - rect.left;
+                const mouseY = (event.clientY || event.pageY) - rect.top;
+                
+                // Offset desde el centro
+                const offsetX = mouseX - centerX;
+                const offsetY = mouseY - centerY;
+
+                const distance = Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+
+                let finalX, finalY;
+                if (distance <= maxRadius) {
+                    // Dentro del círculo, usar posición exacta
+                    finalX = offsetX;
+                    finalY = offsetY;
+                } else {
+                    // Fuera del círculo, restringir al borde
+                    const angle = Math.atan2(offsetY, offsetX);
+                    finalX = Math.cos(angle) * maxRadius;
+                    finalY = Math.sin(angle) * maxRadius;
+                }
+
+                // Aplicar posición: translate(finalX, finalY) se suma al translate(-50%, -50%) del CSS
+                this.knobEl.style.transform = `translate(calc(-50% + ${finalX}px), calc(-50% + ${finalY}px))`;
+
+                // Convertir a valores normalizados (-1 a 1) con normalización segura
+                this.currentX = Math.max(-1.0, Math.min(1.0, finalX / maxRadius));
+                this.currentY = Math.max(-1.0, Math.min(1.0, -finalY / maxRadius)); // Invertir Y para que arriba sea positivo
+
+                this.updateMotorValues();
+                this.sendTankDrive();
+            }
+
+            endJoystick() {
+                if (!this.joystickActive) return;
+                
+                this.joystickActive = false;
+                this.joystickEl.style.cursor = 'grab';
+                
+                // Volver al centro con animación suave
+                this.knobEl.style.transition = 'transform 0.2s ease';
+                this.knobEl.style.transform = 'translate(-50%, -50%)';
+                
+                // Remover la transición después de la animación
+                setTimeout(() => {
+                    this.knobEl.style.transition = 'none';
+                }, 200);
+                
+                this.currentX = 0;
+                this.currentY = 0;
+                
+                this.updateMotorValues();
+                this.sendTankDrive();
+            }
+
+            // Función para recalibrar el joystick
+            recalibrateJoystick() {
+                this.currentX = 0;
+                this.currentY = 0;
+                this.knobEl.style.transition = 'transform 0.2s ease';
+                this.knobEl.style.transform = 'translate(-50%, -50%)';
+                setTimeout(() => {
+                    this.knobEl.style.transition = 'none';
+                }, 200);
+                this.updateMotorValues();
+                console.log('Joystick recalibrado');
+            }
+
+            updateMotorValues() {
+                // Normalizar valores de entrada
+                const forward = Math.max(-1.0, Math.min(1.0, this.currentY));
+                const turn = Math.max(-1.0, Math.min(1.0, this.currentX));
+                
+                // Calcular velocidades de motores (tank drive)
+                let leftSpeed = forward + turn;
+                let rightSpeed = forward - turn;
+                
+                // Normalizar si excede los límites
+                const maxSpeed = Math.max(Math.abs(leftSpeed), Math.abs(rightSpeed));
+                if (maxSpeed > 1.0) {
+                    const scaleFactor = 1.0 / maxSpeed;
+                    leftSpeed *= scaleFactor;
+                    rightSpeed *= scaleFactor;
+                }
+                
+                // Asegurar rango final (-1.0 a 1.0)
+                leftSpeed = Math.max(-1.0, Math.min(1.0, leftSpeed));
+                rightSpeed = Math.max(-1.0, Math.min(1.0, rightSpeed));
+                
+                // Actualizar display
+                this.forwardValueEl.textContent = forward.toFixed(2);
+                this.turnValueEl.textContent = turn.toFixed(2);
+                this.leftValueEl.textContent = leftSpeed.toFixed(2);
+                this.rightValueEl.textContent = rightSpeed.toFixed(2);
+                this.xRawValueEl.textContent = this.currentX.toFixed(2);
+                this.yRawValueEl.textContent = this.currentY.toFixed(2);
+            }
+
+            initEventListeners() {
+                document.getElementById('btn-connect').addEventListener('click', () => this.connect());
+                document.getElementById('btn-disconnect').addEventListener('click', () => this.disconnect());
+                document.getElementById('btn-stop').addEventListener('click', () => this.stop());
+                document.getElementById('btn-calibrate').addEventListener('click', () => this.recalibrateJoystick());
+                document.getElementById('btn-ping').addEventListener('click', () => this.ping());
+                document.getElementById('btn-status').addEventListener('click', () => this.getStatus());
+                
+                // Enter en campos de conexión
+                this.serverIpEl.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.connect();
+                });
+                this.serverPortEl.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.connect();
+                });
+            }
+
+            connect() {
+                const ip = this.serverIpEl.value || 'localhost';
+                const port = this.serverPortEl.value || '8080';
+                const url = `ws://${ip}:${port}`;
+                
+                try {
+                    this.ws = new WebSocket(url);
+                    
+                    this.ws.onopen = () => {
+                        this.isConnected = true;
+                        this.updateStatus('Conectado a ' + url, true);
+                        console.log('Conectado al servidor T100');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            this.handleMessage(data);
+                        } catch (e) {
+                            console.error('Error parsing message:', e);
+                        }
+                    };
+                    
+                    this.ws.onclose = () => {
+                        this.isConnected = false;
+                        this.updateStatus('Desconectado', false);
+                        console.log('Desconectado del servidor');
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateStatus('Error de conexión', false);
+                    };
+                    
+                } catch (error) {
+                    console.error('Error conectando:', error);
+                    this.updateStatus('Error de conexión', false);
+                }
+            }
+
+            disconnect() {
+                if (this.ws) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+            }
+
+            updateStatus(message, connected) {
+                this.statusEl.textContent = message;
+                this.statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            }
+
+            sendMessage(data) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(data));
+                } else {
+                    console.warn('WebSocket no está conectado');
+                }
+            }
+
+            sendTankDrive() {
+                // Normalizar valores antes de enviar
+                const forward = Math.max(-1.0, Math.min(1.0, this.currentY));
+                const turn = Math.max(-1.0, Math.min(1.0, this.currentX));
+                
+                this.sendMessage({
+                    type: 'tank_drive',
+                    forward: forward,
+                    turn: turn
+                });
+            }
+
+            stop() {
+                this.sendMessage({
+                    type: 'stop'
+                });
+                
+                // Reset visual con la nueva forma de centrar
+                this.currentX = 0;
+                this.currentY = 0;
+                this.knobEl.style.transition = 'transform 0.2s ease';
+                this.knobEl.style.transform = 'translate(-50%, -50%)';
+                setTimeout(() => {
+                    this.knobEl.style.transition = 'none';
+                }, 200);
+                this.updateMotorValues();
+            }
+
+            ping() {
+                this.sendMessage({
+                    type: 'ping'
+                });
+            }
+
+            getStatus() {
+                this.sendMessage({
+                    type: 'status'
+                });
+            }
+
+            handleMessage(data) {
+                console.log('Mensaje recibido:', data);
+                
+                switch (data.type) {
+                    case 'welcome':
+                        console.log('Bienvenida:', data.message);
+                        break;
+                    case 'pong':
+                        console.log('Pong recibido');
+                        break;
+                    case 'error':
+                        console.error('Error del servidor:', data.message);
+                        alert('Error: ' + data.message);
+                        break;
+                    case 'status':
+                        console.log('Estado del servidor:', data);
+                        break;
+                }
+            }
+        }
+
+        // Inicializar controlador cuando la página esté lista
+        document.addEventListener('DOMContentLoaded', () => {
+            const controller = new T100Controller();
+            
+            // Conectar automáticamente si es localhost
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                document.getElementById('server-ip').value = 'localhost';
+                // controller.connect(); // Descomentar para auto-conectar
+            }
+        });
+    </script>
+</body>
+</html>
