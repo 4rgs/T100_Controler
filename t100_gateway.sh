@@ -670,6 +670,9 @@ set_web_mode() {
     sudo systemctl restart $T100_SERVICE_NAME
     
     log_info "✅ Modo WEB configurado. Frontend + API disponibles."
+    log_info "🌐 Acceso web: http://$(hostname -I | awk '{print $1}'):$T100_PORT"
+}
+
 # Función para deshabilitar modo debug
 disable_debug_mode() {
     log_info "🚀 Deshabilitando modo debug..."

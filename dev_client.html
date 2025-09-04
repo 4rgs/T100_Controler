@@ -157,7 +157,7 @@
             cursor: pointer;
         }
         
-        .joystick-knob {
+                        .joystick-knob {
             width: 40px;
             height: 40px;
             background: #4CAF50;
@@ -166,8 +166,13 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: all 0.1s;
+            transition: none; /* Sin transiciones para máxima responsividad */
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: grab;
+        }
+        
+        .joystick-knob:active {
+            cursor: grabbing;
         }
         
         .value-display {
@@ -258,9 +263,12 @@
                 this.joystickX = 0;
                 this.joystickY = 0;
                 this.lastSendTime = 0;
+                this.sendQueue = [];
+                this.isProcessingQueue = false;
                 
                 this.initJoystick();
                 this.startPeriodicUpdate();
+                this.startHighFrequencyLoop();
             }
             
             log(message, type = 'info') {
@@ -445,14 +453,12 @@
             async sendControlData() {
                 if (!this.connected || !this.joystickActive) return;
                 
-                // Throttle: enviar máximo cada 50ms
+                // ULTRA-RESPONSIVO: Sin throttling, envío inmediato
                 const now = Date.now();
-                if (now - this.lastSendTime < 50) return;
-                this.lastSendTime = now;
                 
                 try {
-                    const startTime = Date.now();
-                    const response = await fetch(`${this.apiUrl}/api/control`, {
+                    // Envío asíncrono sin esperar respuesta para máxima velocidad
+                    fetch(`${this.apiUrl}/api/control`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -461,18 +467,38 @@
                             x: this.joystickX,
                             y: this.joystickY,
                             timestamp: now
-                        })
+                        }),
+                        // Optimizaciones de red para velocidad
+                        keepalive: true,
+                        cache: 'no-cache'
+                    }).then(response => {
+                        const latency = Date.now() - now;
+                        document.getElementById('latency').textContent = latency;
+                        
+                        if (!response.ok) {
+                            this.log(`Error enviando control: ${response.status}`, 'error');
+                        }
+                    }).catch(error => {
+                        this.log(`Error de red: ${error.message}`, 'error');
                     });
                     
-                    const latency = Date.now() - startTime;
-                    document.getElementById('latency').textContent = latency;
-                    
-                    if (!response.ok) {
-                        this.log(`Error enviando control: ${response.status}`, 'error');
-                    }
                 } catch (error) {
-                    this.log(`Error de red: ${error.message}`, 'error');
+                    this.log(`Error enviando control: ${error.message}`, 'error');
                 }
+            }
+            
+            // Nuevo método para envío continuo ultra-rápido
+            startHighFrequencyLoop() {
+                // Loop a 60 FPS para máxima responsividad
+                const highFrequencyUpdate = () => {
+                    if (this.connected && this.joystickActive) {
+                        // Envío cada frame sin throttling
+                        this.sendControlData();
+                    }
+                    requestAnimationFrame(highFrequencyUpdate);
+                };
+                
+                requestAnimationFrame(highFrequencyUpdate);
             }
             
             startPeriodicUpdate() {
@@ -491,7 +517,8 @@
                             }
                             
                         } catch (error) {
-                            // No hacer log de estos errores menores
+                            // Silenciar errores de status para no saturar logs
+                            console.debug('Status check error:', error);
                         }
                     }
                 }, 1000);

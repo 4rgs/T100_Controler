@@ -37,18 +37,29 @@ def setup_logging(debug_mode=False):
         logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 def create_api_app():
-    """Crear aplicación Flask minimalista solo para API"""
+    """Crear aplicación Flask minimalista solo para API - ULTRA OPTIMIZADA"""
     from src.hardware.l298n_driver_ultra import UltraOptimizedL298NDriver
     from src.control.joystick_controller_ultra import UltraOptimizedJoystickController
     from src.config.settings import MotorConfig, JoystickConfig
     
-    # Crear Flask app minimalista
+    # Crear Flask app ultra-minimalista
     app = Flask(__name__)
-    app.config['JSON_SORT_KEYS'] = False
-    app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
     
-    # CORS habilitado para desarrollo
-    CORS(app, origins="*")
+    # Configuraciones para máxima velocidad
+    app.config.update(
+        JSON_SORT_KEYS=False,
+        JSONIFY_PRETTYPRINT_REGULAR=False,
+        SEND_FILE_MAX_AGE_DEFAULT=0,
+        TESTING=False,
+        DEBUG=False
+    )
+    
+    # CORS optimizado para desarrollo
+    CORS(app, 
+         origins="*",
+         methods=['GET', 'POST'],
+         allow_headers=['Content-Type'],
+         max_age=3600)  # Cache preflight por 1 hora
     
     # Inicializar hardware
     motor_config = MotorConfig()
@@ -73,25 +84,25 @@ def create_api_app():
     
     @app.route('/api/control', methods=['POST'])
     def control_motors():
-        """Control directo de motores via joystick data"""
+        """Control directo de motores via joystick data - ULTRA RESPONSIVO"""
         from flask import request
         
         try:
+            # Procesamiento ultra-rápido sin validaciones pesadas
             data = request.get_json(force=True)
             x = float(data.get('x', 0))
             y = float(data.get('y', 0))
             
-            # Procesar input del joystick
+            # Procesar input del joystick INMEDIATAMENTE
             controller.process_joystick_input(x, y)
             
-            return {
-                'success': True,
-                'x': x,
-                'y': y,
-                'timestamp': data.get('timestamp', 0)
-            }
-        except Exception as e:
-            return {'success': False, 'error': str(e)}, 400
+            # Respuesta minimalista para velocidad
+            return {'ok': 1, 'x': x, 'y': y}
+            
+        except Exception:
+            # Error handling mínimo para máxima velocidad
+            motor_driver.emergency_stop()
+            return {'ok': 0}, 400
     
     @app.route('/api/emergency/stop', methods=['POST'])
     def emergency_stop():
@@ -149,13 +160,17 @@ def main():
         print("   GET  /api/config")
         
         try:
-            # Ejecutar servidor Flask
+            # Ejecutar servidor Flask ULTRA-OPTIMIZADO
             app.run(
                 host=host,
                 port=port,
-                debug=False,  # Siempre False en producción
+                debug=False,
                 threaded=True,
-                use_reloader=False
+                use_reloader=False,
+                # Optimizaciones para ultra-baja latencia
+                processes=1,  # Single process para evitar overhead
+                use_debugger=False,
+                passthrough_errors=False
             )
         finally:
             # Cleanup al finalizar
