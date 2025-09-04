@@ -116,6 +116,10 @@ class JoystickControllerOptimized:
         # Aplicar factor de giro
         x *= self.config.turn_factor
         
+        # Invertir dirección de giro si está configurado
+        if self.config.invert_turn_direction:
+            x = -x
+        
         # Calcular velocidades de ruedas
         left = y - x
         right = y + x

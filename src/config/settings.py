@@ -32,6 +32,7 @@ class JoystickConfig:
     deadzone: float = 0.03
     non_linear_factor: float = 1.0
     turn_factor: float = 1.0  # Factor de multiplicación para giros
+    invert_turn_direction: bool = False  # True para invertir dirección de giro
 
 
 @dataclass
@@ -53,14 +54,15 @@ class ServerConfig:
 # Configuración ULTRA-BAJA LATENCIA para respuesta máxima
 ULTRA_LOW_LATENCY_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),
         motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False),
         pwm_frequency=20000  # PWM ultra-alto para respuesta instantánea
     ),
     "joystick": JoystickConfig(
         deadzone=0.01,        # Deadzone mínimo para máxima sensibilidad
         non_linear_factor=0.8, # Respuesta más lineal
-        turn_factor=1.2       # Factor de giro optimizado
+        turn_factor=1.2,      # Factor de giro optimizado
+        invert_turn_direction=False  # Cambiar a True si los giros están invertidos
     ),
     "gamepad": GamepadConfig(
         deadzone=0.02,        # Deadzone gamepad ultra-bajo
@@ -84,7 +86,9 @@ DEFAULT_CONFIG = {
     ),
     "joystick": JoystickConfig(
         deadzone=0.10,
-        non_linear_factor=1.3
+        non_linear_factor=1.3,
+        turn_factor=1.0,
+        invert_turn_direction=True  # CAMBIAR ESTO para arreglar giros invertidos
     ),
     "gamepad": GamepadConfig(
         deadzone=0.06,

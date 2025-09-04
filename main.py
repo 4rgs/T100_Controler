@@ -18,22 +18,22 @@ sys.path.insert(0, str(src_dir))
 def main():
     """Punto de entrada principal del T100 Controller."""
     try:
-        # Importar la aplicación de producción
-        from src.web.flask_app import OptimizedFlaskAppProduction
+        # Importar la aplicación ULTRA-OPTIMIZADA
+        from src.web.flask_app_ultra import UltraLowLatencyFlaskApp
         
         # Crear la aplicación
-        app_instance = OptimizedFlaskAppProduction()
+        app_instance = UltraLowLatencyFlaskApp()
         
         # Configurar host y puerto desde variables de entorno
         host = os.getenv('T100_HOST', '0.0.0.0')
         port = int(os.getenv('T100_PORT', 5000))
         debug_mode = os.getenv('T100_DEBUG', 'false').lower() == 'true'
         
-        print(f"🚀 T100 Controller iniciando en {host}:{port}")
+        print(f"⚡ T100 Controller ULTRA-OPTIMIZADO iniciando en {host}:{port}")
         if debug_mode:
-            print("� Modo DEBUG activado")
+            print("🔧 Modo DEBUG activado")
         else:
-            print("🏭 Modo PRODUCCIÓN activado")
+            print("🚀 Modo ULTRA-PRODUCCIÓN activado")
         
         # Ejecutar la aplicación
         app_instance.app.run(
