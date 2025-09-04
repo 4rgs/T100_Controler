@@ -171,8 +171,8 @@ setup_python_environment() {
     pip install --upgrade pip --quiet
     
     # Instalar dependencias optimizadas
-    if [ -f "requirements_optimized.txt" ]; then
-        pip install -r requirements_optimized.txt --no-cache-dir --quiet
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt --no-cache-dir --quiet
     elif [ -f "requirements.txt" ]; then
         pip install -r requirements.txt --no-cache-dir --quiet
     fi
@@ -404,7 +404,7 @@ run() {
     
     # Activar entorno y ejecutar
     source venv/bin/activate
-    exec python motor_control_optimized.py
+    exec python motor_control.py
 }
 
 # Función de actualización
@@ -498,10 +498,10 @@ verify_system() {
         echo "✅ Directorio de instalación: $T100_INSTALL_DIR"
         cd "$T100_INSTALL_DIR"
         
-        if [ -f "motor_control_optimized.py" ]; then
-            echo "✅ motor_control_optimized.py existe"
+        if [ -f "motor_control.py" ]; then
+            echo "✅ motor_control.py existe"
         else
-            echo "❌ motor_control_optimized.py no encontrado"
+            echo "❌ motor_control.py no encontrado"
         fi
         
         if [ -f "t100_gateway.sh" ]; then
