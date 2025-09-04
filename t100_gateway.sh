@@ -267,50 +267,71 @@ auto_update() {
     
     cd "$T100_INSTALL_DIR"
     
-    # Verificar conexión a internet
-    if ! curl -s --connect-timeout 5 https://github.com >/dev/null; then
-        log_warning "Sin conexión a internet. Saltando actualización"
+    # Verificar si hay cambios
+    if git diff --quiet HEAD..origin/$T100_BRANCH; then
+        log_info "No hay actualizaciones disponibles"
         return 0
     fi
     
-    # Obtener hash actual
-    local current_hash=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    # Backup de archivos locales si existen
+    if [[ -f "config.local.py" ]]; then
+        cp config.local.py config.local.py.backup
+        log_info "Backup de configuración local creado"
+    fi
     
-    # Fetch cambios remotos
-    git fetch origin $T100_BRANCH 2>/dev/null || {
-        log_warning "No se pudo obtener actualizaciones"
-        return 0
-    }
-    
-    # Verificar si hay actualizaciones
-    local remote_hash=$(git rev-parse origin/$T100_BRANCH)
-    
-    if [ "$current_hash" != "$remote_hash" ]; then
-        log_info "Nueva versión disponible. Actualizando..."
-        
-        # Guardar cambios locales si existen
-        if ! git diff --quiet; then
-            git stash push -m "Auto-update stash $(date)"
+    # Actualizar repositorio
+    if git status --porcelain | grep -q .; then
+        log_warning "Hay cambios locales, creando stash..."
+        if git stash push -m "Auto-update stash $(date)"; then
+            log_info "Stash creado exitosamente"
+        else
+            log_error "Error creando stash"
+            return 1
         fi
-        
-        # Actualizar
-        git checkout $T100_BRANCH
-        git pull origin $T100_BRANCH
-        
-        # Actualizar dependencias Python
-        source venv/bin/activate
-        if [ -f "requirements_optimized.txt" ]; then
-            pip install -r requirements_optimized.txt --no-cache-dir --quiet
-        fi
-        
-        log_info "Actualización completada. Reiniciando servicio..."
+    fi
+    
+    git pull origin $T100_BRANCH
+    
+    # Restaurar configuración local
+    if [[ -f "config.local.py.backup" ]]; then
+        mv config.local.py.backup config.local.py
+        log_info "Configuración local restaurada"
+    fi
+    
+    # Reinstalar dependencias si requirements.txt cambió
+    if git diff --name-only HEAD@{1}..HEAD | grep -q requirements.txt; then
+        log_info "requirements.txt cambió, actualizando dependencias..."
+        install_python_dependencies
+    fi
+    
+    # Reiniciar servicio
+    if systemctl is-active --quiet $T100_SERVICE_NAME; then
         sudo systemctl restart $T100_SERVICE_NAME
-        
-        return 1  # Indica que hubo actualización
-    else
-        log_debug "Sistema actualizado"
-        return 0
+        log_info "Servicio reiniciado después de la actualización"
     fi
+    
+    log_info "Auto-actualización completada"
+}
+
+# Reinstalar servicio completamente
+reinstall_service() {
+    log_info "Reinstalando servicio completo..."
+    
+    # Parar servicio actual
+    sudo systemctl stop $T100_SERVICE_NAME 2>/dev/null || true
+    
+    # Actualizar código
+    update
+    
+    # Recrear servicio
+    create_systemd_service
+    
+    # Habilitar e iniciar
+    sudo systemctl enable $T100_SERVICE_NAME
+    sudo systemctl start $T100_SERVICE_NAME
+    
+    log_info "Servicio reinstalado exitosamente"
+    status
 }
 
 # Monitorear recursos
@@ -527,6 +548,7 @@ show_help() {
     echo "  install     Instalación completa del sistema"
     echo "  run         Ejecutar en modo directo (sin servicio)"
     echo "  update      Actualizar desde repositorio"
+    echo "  reinstall   Reinstalar servicio completamente"
     echo "  status      Mostrar estado del sistema"
     echo "  verify      Verificación completa del sistema"
     echo "  monitor     Monitorear recursos en tiempo real"
@@ -580,6 +602,9 @@ main() {
             ;;
         update)
             update
+            ;;
+        reinstall)
+            reinstall_service
             ;;
         status)
             status
