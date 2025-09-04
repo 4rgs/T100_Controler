@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T100 Controller - Cliente Web</title>
+    <title>T100 Remote Controller - PWA</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Control remoto profesional para robot T100 con interfaz táctil y monitoreo en tiempo real">
+    <meta name="theme-color" content="#3498db">
+    <meta name="msapplication-TileColor" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="T100 Controller">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0iIzJjM2U1MCIvPgo8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI4IiBzdHJva2U9IiMzZGRjZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPgo8Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIzIiBmaWxsPSIjM2RkY2ZmIi8+Cjwvc3ZnPgo=">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE4MCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMjAiIGZpbGw9IiMyYzNlNTAiLz4KPHN2ZyB4PSI0NSIgeT0iNDUiIHdpZHRoPSI5MCIgaGVpZ2h0PSI5MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjM2RkY2ZmIj4KICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI4IiBzdHJva2U9IiMzZGRjZmYiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIvPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIGZpbGw9IiMzZGRjZmYiLz4KPC9zdmc+Cjwvc3ZnPgo=")
     <style>
         * {
             margin: 0;
@@ -411,7 +426,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖T100 Web Remote Controller</h1>
+            <h1>🚁 T100 Remote Controller</h1>
             <div class="connection-status">
                 <div id="status-indicator" class="status-indicator offline"></div>
                 <div id="status" class="status disconnected">Desconectado</div>
@@ -872,9 +887,149 @@
             }
         }
 
-        // Inicializar controlador cuando la página esté lista
+        // PWA Service Worker Registration
+        class PWAManager {
+            constructor() {
+                this.deferredPrompt = null;
+                this.isInstalled = false;
+                this.init();
+            }
+
+            async init() {
+                // Registrar Service Worker
+                if ('serviceWorker' in navigator) {
+                    try {
+                        const registration = await navigator.serviceWorker.register('./sw.js');
+                        console.log('Service Worker registrado:', registration);
+                        
+                        // Manejar actualizaciones del SW
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    this.showUpdateNotification();
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.error('Error registrando Service Worker:', error);
+                    }
+                }
+
+                // Manejar evento de instalación
+                this.setupInstallPrompt();
+                
+                // Detectar si ya está instalada
+                this.detectInstallation();
+            }
+
+            setupInstallPrompt() {
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    this.deferredPrompt = e;
+                    this.showInstallButton();
+                });
+
+                window.addEventListener('appinstalled', () => {
+                    this.isInstalled = true;
+                    this.hideInstallButton();
+                    console.log('PWA instalada correctamente');
+                });
+            }
+
+            detectInstallation() {
+                // Detectar si se está ejecutando como PWA
+                if (window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true) {
+                    this.isInstalled = true;
+                    console.log('Ejecutándose como PWA');
+                }
+            }
+
+            showInstallButton() {
+                // Crear botón de instalación dinámicamente
+                const installBtn = document.createElement('button');
+                installBtn.id = 'pwa-install-btn';
+                installBtn.className = 'btn-primary';
+                installBtn.innerHTML = '📱 Instalar App';
+                installBtn.style.position = 'fixed';
+                installBtn.style.bottom = '20px';
+                installBtn.style.right = '20px';
+                installBtn.style.zIndex = '1000';
+                installBtn.style.borderRadius = '50px';
+                installBtn.style.padding = '15px 25px';
+                installBtn.style.boxShadow = '0 4px 20px rgba(52, 152, 219, 0.4)';
+
+                installBtn.addEventListener('click', () => this.installPWA());
+                document.body.appendChild(installBtn);
+            }
+
+            hideInstallButton() {
+                const installBtn = document.getElementById('pwa-install-btn');
+                if (installBtn) {
+                    installBtn.remove();
+                }
+            }
+
+            async installPWA() {
+                if (this.deferredPrompt) {
+                    this.deferredPrompt.prompt();
+                    const { outcome } = await this.deferredPrompt.userChoice;
+                    
+                    if (outcome === 'accepted') {
+                        console.log('Usuario aceptó la instalación');
+                    } else {
+                        console.log('Usuario rechazó la instalación');
+                    }
+                    
+                    this.deferredPrompt = null;
+                    this.hideInstallButton();
+                }
+            }
+
+            showUpdateNotification() {
+                // Mostrar notificación de actualización
+                const updateDiv = document.createElement('div');
+                updateDiv.innerHTML = `
+                    <div style="
+                        position: fixed; 
+                        top: 20px; 
+                        left: 50%; 
+                        transform: translateX(-50%); 
+                        background: linear-gradient(135deg, #f39c12, #e67e22); 
+                        color: white; 
+                        padding: 15px 25px; 
+                        border-radius: 8px; 
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                        z-index: 1001;
+                        font-weight: 600;
+                    ">
+                        ✨ Nueva versión disponible
+                        <button onclick="window.location.reload()" style="
+                            margin-left: 15px; 
+                            padding: 8px 15px; 
+                            border: none; 
+                            border-radius: 4px; 
+                            background: white; 
+                            color: #f39c12; 
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">Actualizar</button>
+                    </div>
+                `;
+                document.body.appendChild(updateDiv);
+                
+                // Auto-ocultar después de 10 segundos
+                setTimeout(() => {
+                    updateDiv.remove();
+                }, 10000);
+            }
+        }
+
+        // Inicializar controlador y PWA cuando la página esté lista
         document.addEventListener('DOMContentLoaded', () => {
             const controller = new T100Controller();
+            const pwaManager = new PWAManager();
             
             // Conectar automáticamente si es localhost
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {

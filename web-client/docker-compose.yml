@@ -7,12 +7,14 @@ services:
     ports:
       - "8084:80"
     environment:
-      - GITHUB_URL=https://raw.githubusercontent.com/4rgs/T100_Controler/develop/client.html
+      - GITHUB_URL=https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/client.html
     command: 
       - sh
       - -c
       - |
-        wget -O /usr/local/apache2/htdocs/index.html https://raw.githubusercontent.com/4rgs/T100_Controler/develop/client.html &&
+        wget -O /usr/local/apache2/htdocs/index.html https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/client.html &&
+        wget -O /usr/local/apache2/htdocs/manifest.json https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/manifest.json &&
+        wget -O /usr/local/apache2/htdocs/sw.js https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/sw.js &&
         httpd-foreground
     restart: unless-stopped
     labels:
