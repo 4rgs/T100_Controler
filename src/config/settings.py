@@ -54,8 +54,8 @@ class ServerConfig:
 # IMPORTANTE: Ajustar según el comportamiento real de tus motores
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),  # Motor A (izq) - OK
-        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=True),  # Motor B (der) - PROBLEMA COAST
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),  # Motor A (izq) - OK
+        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False),  # Motor B (der) - PROBLEMA COAST
         pwm_frequency=4000
     ),
     "joystick": JoystickConfig(
