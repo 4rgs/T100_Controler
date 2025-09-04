@@ -18,6 +18,7 @@ class MotorPins:
     in2: int
     invert: bool = False
     power_factor: float = 1.0  # Factor de calibración de potencia (0.5 - 1.5)
+    pwm_inverted: bool = False  # PWM invertido: 0=máximo, 255=parado
 
 
 @dataclass
@@ -26,6 +27,7 @@ class HardwareConfig:
     motor_a: MotorPins  # Motor izquierdo
     motor_b: MotorPins  # Motor derecho
     pwm_frequency: int = 1000
+    max_pwm_percent: float = 33.0  # Límite máximo PWM en porcentaje (0-100)
 
 
 @dataclass
@@ -39,9 +41,10 @@ class ServerConfig:
 # Configuración por defecto
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False, power_factor=1.0),  # Motor izquierdo
-        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False, power_factor=1.0),  # Motor derecho
-        pwm_frequency=1000
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False, power_factor=1.0, pwm_inverted=False),  # Motor izquierdo - normal
+        motor_b=MotorPins(enable=19, in1=21, in2=26, invert=False, power_factor=1.0, pwm_inverted=False),   # Motor derecho - PWM INVERTIDO
+        pwm_frequency=1000,
+        max_pwm_percent=100.0  # Sin límite PWM - potencia completa
     ),
     "server": ServerConfig(
         host="0.0.0.0",
@@ -64,6 +67,16 @@ CALIBRATION_CONFIGS = {
         "description": "Motor B más rápido - reducir su potencia", 
         "motor_a_factor": 1.0,
         "motor_b_factor": 0.85
+    },
+    "motor_a_weak": {
+        "description": "Motor A débil - aumentar su potencia",
+        "motor_a_factor": 1.5,  # Aumentar potencia motor izquierdo
+        "motor_b_factor": 1.0
+    },
+    "motor_b_weak": {
+        "description": "Motor B débil - aumentar su potencia",
+        "motor_a_factor": 1.0,
+        "motor_b_factor": 1.5
     },
     "drift_left": {
         "description": "Se desvía a la izquierda - reducir Motor B",
@@ -104,14 +117,17 @@ def get_calibrated_config(calibration_name: str) -> dict:
         motor_a=MotorPins(
             enable=12, in1=16, in2=20, 
             invert=False, 
-            power_factor=calib["motor_a_factor"]
+            power_factor=calib["motor_a_factor"],
+            pwm_inverted=False
         ),
         motor_b=MotorPins(
             enable=19, in1=21, in2=26, 
             invert=False, 
-            power_factor=calib["motor_b_factor"]
+            power_factor=calib["motor_b_factor"],
+            pwm_inverted=True
         ),
-        pwm_frequency=1000
+        pwm_frequency=2000,
+        max_pwm_percent=100
     )
     
     print(f"🔧 Usando calibración: {calib['description']}")
@@ -142,17 +158,20 @@ def set_custom_calibration(motor_a_factor: float, motor_b_factor: float) -> dict
         motor_a=MotorPins(
             enable=12, in1=16, in2=20, 
             invert=False, 
-            power_factor=motor_a_factor
+            power_factor=motor_a_factor,
+            pwm_inverted=False
         ),
         motor_b=MotorPins(
-            enable=26, in1=21, in2=19, 
+            enable=19, in1=21, in2=26, 
             invert=False, 
-            power_factor=motor_b_factor
+            power_factor=motor_b_factor,
+            pwm_inverted=True
         ),
-        pwm_frequency=1000
+        pwm_frequency=2000,
+        max_pwm_percent=100
     )
     
-    print(f"🎯 Calibración personalizada aplicada:")
+    print("🎯 Calibración personalizada aplicada:")
     print(f"   Motor A factor: {motor_a_factor}")
     print(f"   Motor B factor: {motor_b_factor}")
     

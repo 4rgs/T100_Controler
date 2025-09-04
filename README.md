@@ -12,6 +12,19 @@ Control remoto para vehículo T100 mediante WebSocket API.
 - **Cliente**: HTML5 + JavaScript (joystick virtual)
 - **Comunicación**: WebSocket en tiempo real
 
+## 📦 Deploy al Raspberry Pi
+
+```bash
+./deploy.sh                    # IP por defecto: 192.168.1.140
+./deploy.sh 192.168.1.150      # IP personalizada
+```
+
+💡 **Tip**: Para evitar repetir contraseña, configura claves SSH:
+```bash
+ssh-keygen -t rsa
+ssh-copy-id 4rgs@192.168.1.140
+```
+
 ## Instalación en Raspberry Pi
 
 1. **Clonar el repositorio**:

@@ -12,7 +12,7 @@ import json
 import logging
 from typing import Dict, Any
 from config import get_config
-from l298n_driver import L298NDriver
+from l298n_driver import L298NDriverOptimized
 
 
 class T100Server:
@@ -40,7 +40,7 @@ class T100Server:
     async def initialize_hardware(self):
         """Inicializa el hardware de manera asíncrona."""
         try:
-            self.motor_driver = L298NDriver()
+            self.motor_driver = L298NDriverOptimized()
             self.logger.info("Hardware inicializado correctamente")
             return True
         except Exception as e:
@@ -84,7 +84,7 @@ class T100Server:
             self.connected_clients.discard(websocket)
             # Parar motores cuando se desconecta el cliente
             if self.motor_driver:
-                self.motor_driver.stop_all()
+                self.motor_driver.stop()
     
     async def process_command(self, websocket, data: Dict[str, Any]):
         """Procesa comandos del cliente."""
@@ -156,7 +156,7 @@ class T100Server:
     async def handle_stop(self, websocket):
         """Maneja comando de parada."""
         if self.motor_driver:
-            self.motor_driver.stop_all()
+            self.motor_driver.stop()
             
             response = {
                 "type": "stop_ack",

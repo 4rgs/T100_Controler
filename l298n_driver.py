@@ -2,277 +2,254 @@
 # -*- coding: utf-8 -*-
 
 """
-Driver L298N para control de motores con pigpio
-Hardware: L298N + Raspberry Pi Zero 2W
+L298N Driver Ultra-Optimizado para Raspberry Pi Zero 2W
+Diseñado para eficiencia en dispositivos de bajos recursos
 """
 
 import pigpio
 import time
-from typing import Tuple
+from typing import Optional
 from config import get_config
 
 
-class L298NDriver:
-    """Driver para controlar motores DC mediante L298N con pigpio."""
+class L298NDriverOptimized:
+    """Driver L298N ultra-optimizado para RPi Zero 2W."""
     
     def __init__(self):
-        """Inicializa la conexión pigpio y configura los pines."""
+        """Inicialización mínima y eficiente."""
         self.config = get_config()
         self.hw_config = self.config["hardware"]
         
-        # Conectar a pigpio daemon
+        # Conexión pigpio única
         self.pi = pigpio.pi()
         if not self.pi.connected:
-            raise RuntimeError("No se pudo conectar al daemon pigpio")
+            raise RuntimeError("pigpio daemon no disponible")
         
-        # Configurar pines como salida
-        self._setup_pins()
+        # Cache de configuración para evitar recálculos
+        self._setup_hardware()
+        self._cache_pwm_values()
         
-        # Estado inicial: motores detenidos
-        self.stop_all()
+        print("✅ L298N Driver optimizado iniciado")
+        if self.hw_config.max_pwm_percent >= 100.0:
+            print("   PWM: Sin límite - Potencia completa (0-255)")
+        else:
+            print(f"   PWM límite: {self.hw_config.max_pwm_percent}% = {self.max_pwm_value}/255")
         
-        print("L298N Driver inicializado correctamente")
-    
-    def _setup_pins(self):
-        """Configura todos los pines como salida."""
+    def _setup_hardware(self):
+        """Configuración hardware una sola vez."""
         motor_a = self.hw_config.motor_a
         motor_b = self.hw_config.motor_b
         
-        # Motor A
-        self.pi.set_mode(motor_a.enable, pigpio.OUTPUT)
-        self.pi.set_mode(motor_a.in1, pigpio.OUTPUT)
-        self.pi.set_mode(motor_a.in2, pigpio.OUTPUT)
+        # Configurar todos los pines como OUTPUT
+        pins = [motor_a.enable, motor_a.in1, motor_a.in2, 
+                motor_b.enable, motor_b.in1, motor_b.in2]
         
-        # Motor B
-        self.pi.set_mode(motor_b.enable, pigpio.OUTPUT)
-        self.pi.set_mode(motor_b.in1, pigpio.OUTPUT)
-        self.pi.set_mode(motor_b.in2, pigpio.OUTPUT)
+        for pin in pins:
+            self.pi.set_mode(pin, pigpio.OUTPUT)
+            self.pi.write(pin, 0)  # Estado inicial LOW
         
-        # Configurar PWM frequency y rango
+        # Configurar PWM en pines ENABLE una sola vez
         freq = self.hw_config.pwm_frequency
-        
-        # Motor A PWM setup
         self.pi.set_PWM_frequency(motor_a.enable, freq)
-        self.pi.set_PWM_range(motor_a.enable, 255)  # Establecer rango 0-255
-        
-        # Motor B PWM setup  
         self.pi.set_PWM_frequency(motor_b.enable, freq)
-        self.pi.set_PWM_range(motor_b.enable, 255)  # Establecer rango 0-255
+        self.pi.set_PWM_range(motor_a.enable, 255)
+        self.pi.set_PWM_range(motor_b.enable, 255)
         
         # Inicializar PWM en 0
         self.pi.set_PWM_dutycycle(motor_a.enable, 0)
         self.pi.set_PWM_dutycycle(motor_b.enable, 0)
         
-        # Verificar configuración PWM
-        self._verify_pwm_setup()
-    
-    def _verify_pwm_setup(self):
-        """Verifica que la configuración PWM esté correcta."""
-        motor_a = self.hw_config.motor_a
-        motor_b = self.hw_config.motor_b
+    def _cache_pwm_values(self):
+        """Pre-calcular valores PWM para optimización."""
+        max_percent = self.hw_config.max_pwm_percent / 100.0
+        self.max_pwm_value = int(255 * max_percent)
         
-        print("🔍 Verificando configuración PWM...")
+        # Cache de factores de potencia
+        self.motor_a_factor = self.hw_config.motor_a.power_factor
+        self.motor_b_factor = self.hw_config.motor_b.power_factor
         
-        # Verificar Motor A
-        range_a = self.pi.get_PWM_range(motor_a.enable)
-        freq_a = self.pi.get_PWM_frequency(motor_a.enable)
-        print(f"   Motor A (pin {motor_a.enable}): Rango={range_a}, Freq={freq_a}Hz")
-        
-        # Verificar Motor B
-        range_b = self.pi.get_PWM_range(motor_b.enable)
-        freq_b = self.pi.get_PWM_frequency(motor_b.enable)
-        print(f"   Motor B (pin {motor_b.enable}): Rango={range_b}, Freq={freq_b}Hz")
-        
-        # Verificar que los rangos sean correctos
-        if range_a != 255 or range_b != 255:
-            print(f"⚠️  Advertencia: Rangos PWM incorrectos (esperado 255)")
-            return False
-        
-        print("✅ Configuración PWM verificada correctamente")
-        return True
-    
-    def set_motor_speed(self, motor: str, speed: float):
+    def _set_motor_raw(self, motor_pins, speed: float, power_factor: float):
         """
-        Controla un motor específico.
+        Control directo de motor optimizado.
         
         Args:
-            motor: 'A' o 'B'
-            speed: Velocidad entre -1.0 (atrás máx) y 1.0 (adelante máx)
+            motor_pins: Configuración de pines del motor
+            speed: Velocidad (-1.0 a 1.0)
+            power_factor: Factor de calibración
         """
-        if motor.upper() == 'A':
-            motor_config = self.hw_config.motor_a
-        elif motor.upper() == 'B':
-            motor_config = self.hw_config.motor_b
-        else:
-            raise ValueError("Motor debe ser 'A' o 'B'")
-        
         # Aplicar inversión si está configurada
-        if motor_config.invert:
+        if motor_pins.invert:
             speed = -speed
-        
-        # Limitar velocidad estrictamente entre -1.0 y 1.0
+            
+        # Limitar entrada
         speed = max(-1.0, min(1.0, speed))
         
-        # Aplicar factor de calibración de potencia
+        # Calcular PWM (siempre positivo)
         abs_speed = abs(speed)
-        calibrated_speed = abs_speed * motor_config.power_factor
+        calibrated_speed = abs_speed * power_factor
+        # NO limitar calibrated_speed para permitir power_factor > 1.0
         
-        # Asegurar que el valor calibrado no exceda 1.0
-        calibrated_speed = min(1.0, calibrated_speed)
+        # Aplicar límite PWM máximo y convertir a entero
+        pwm_value = int(calibrated_speed * self.max_pwm_value)
+        pwm_value = max(0, min(self.max_pwm_value, pwm_value))  # Limitar al PWM máximo permitido
         
-        # Convertir a PWM (0-255) con normalización segura
-        pwm_value = int(calibrated_speed * 255)
+        # Aplicar inversión PWM si está configurada
+        if motor_pins.pwm_inverted:
+            pwm_value = self.max_pwm_value - pwm_value  # Invertir: 0→255, 255→0
         
-        # Asegurar que PWM esté en rango válido (0-255)
-        pwm_value = max(0, min(255, pwm_value))
+        # Control de dirección optimizado (solo cambiar cuando sea necesario)
+        if speed > 0.01:  # Adelante
+            self.pi.write(motor_pins.in1, 1)
+            self.pi.write(motor_pins.in2, 0)
+        elif speed < -0.01:  # Atrás
+            self.pi.write(motor_pins.in1, 0)
+            self.pi.write(motor_pins.in2, 1)
+        else:  # Parar (freno)
+            self.pi.write(motor_pins.in1, 0)
+            self.pi.write(motor_pins.in2, 0)
+            pwm_value = 0
         
-        if speed > 0.01:  # Umbral mínimo para evitar ruido
-            # Adelante
-            self.pi.write(motor_config.in1, 1)
-            self.pi.write(motor_config.in2, 0)
-        elif speed < -0.01:  # Umbral mínimo para evitar ruido
-            # Atrás
-            self.pi.write(motor_config.in1, 0)
-            self.pi.write(motor_config.in2, 1)
-        else:
-            # Parar (freno) - zona muerta
-            self.pi.write(motor_config.in1, 0)
-            self.pi.write(motor_config.in2, 0)
-            pwm_value = 0  # Asegurar PWM 0 en parada
+        # Aplicar PWM
+        self.pi.set_PWM_dutycycle(motor_pins.enable, pwm_value)
         
-        # Aplicar PWM con verificación adicional
-        try:
-            # Verificar que el pin esté configurado correctamente
-            current_range = self.pi.get_PWM_range(motor_config.enable)
-            if current_range != 255:
-                print(f"⚠️  Reconfigurando rango PWM pin {motor_config.enable}: {current_range} → 255")
-                self.pi.set_PWM_range(motor_config.enable, 255)
-            
-            # Establecer PWM
-            self.pi.set_PWM_dutycycle(motor_config.enable, pwm_value)
-            
-        except Exception as e:
-            print(f"❌ Error estableciendo PWM {pwm_value} en pin {motor_config.enable}: {e}")
-            print(f"   Rango actual: {self.pi.get_PWM_range(motor_config.enable)}")
-            print(f"   Frecuencia: {self.pi.get_PWM_frequency(motor_config.enable)}")
-            
-            # Intentar reconfigurar completamente el pin
-            try:
-                print(f"🔧 Reconfigurando pin {motor_config.enable}...")
-                self.pi.set_mode(motor_config.enable, pigpio.OUTPUT)
-                self.pi.set_PWM_frequency(motor_config.enable, self.hw_config.pwm_frequency)
-                self.pi.set_PWM_range(motor_config.enable, 255)
-                self.pi.set_PWM_dutycycle(motor_config.enable, pwm_value)
-                print(f"✅ Pin {motor_config.enable} reconfigurado correctamente")
-            except Exception as e2:
-                print(f"❌ Fallo crítico en pin {motor_config.enable}: {e2}")
-                # Como último recurso, usar GPIO normal
-                if pwm_value > 0:
-                    self.pi.write(motor_config.enable, 1)
-                else:
-                    self.pi.write(motor_config.enable, 0)
-    
+        # Debug: mostrar valores de PWM aplicados
+        if abs(speed) > 0.01:
+            direction = "ADELANTE" if speed > 0 else "ATRÁS"
+            motor_name = "A(izq)" if motor_pins.enable == 12 else "B(der)"
+            pwm_info = f"PWM {pwm_value}/{self.max_pwm_value}"
+            if motor_pins.pwm_inverted:
+                original_pwm = self.max_pwm_value - pwm_value
+                pwm_info += f" (invertido desde {original_pwm})"
+            print(f"🔧 Motor {motor_name}: speed={speed:.2f} × factor={power_factor} = {pwm_info} [{direction}]")
+        
+        return pwm_value
+        
+    def set_motor_a(self, speed: float):
+        """Control Motor A (izquierdo)."""
+        return self._set_motor_raw(self.hw_config.motor_a, speed, self.motor_a_factor)
+        
+    def set_motor_b(self, speed: float):
+        """Control Motor B (derecho).""" 
+        return self._set_motor_raw(self.hw_config.motor_b, speed, self.motor_b_factor)
+        
     def set_motors(self, left_speed: float, right_speed: float):
-        """
-        Controla ambos motores simultáneamente.
-        
-        Args:
-            left_speed: Velocidad motor izquierdo (-1.0 a 1.0)
-            right_speed: Velocidad motor derecho (-1.0 a 1.0)
-        """
-        # Normalizar entradas antes de procesar
+        """Control ambos motores simultáneamente."""
+        # Normalizar entradas una sola vez
         left_speed = max(-1.0, min(1.0, left_speed))
         right_speed = max(-1.0, min(1.0, right_speed))
         
-        self.set_motor_speed('A', left_speed)
-        self.set_motor_speed('B', right_speed)
-    
-    def tank_drive(self, forward: float, turn: float):
+        # Aplicar a motores
+        pwm_a = self.set_motor_a(left_speed)
+        pwm_b = self.set_motor_b(right_speed)
+        
+        return pwm_a, pwm_b
+        
+    def tank_drive(self, forward: float, turn: float, debug: bool = False):
         """
-        Control tipo tanque: forward/backward + turn.
+        Control tank drive optimizado y corregido.
         
         Args:
-            forward: Movimiento adelante/atrás (-1.0 a 1.0)
-            turn: Giro izquierda/derecha (-1.0 a 1.0)
+            forward: Adelante/atrás (-1.0 a 1.0)
+            turn: Giro (-1.0=izq, +1.0=der)
+            debug: Mostrar información de debug
         """
         # Normalizar entradas
         forward = max(-1.0, min(1.0, forward))
         turn = max(-1.0, min(1.0, turn))
         
-        # Calcular velocidades de cada motor
-        left_speed = forward + turn
-        right_speed = forward - turn
+        # Algoritmo tank drive corregido
+        left_speed = forward - turn   # Giro derecha (+turn) = motor izq más lento
+        right_speed = forward + turn  # Giro derecha (+turn) = motor der más rápido
         
-        # Normalizar si excede los límites (método mejorado)
-        max_speed = max(abs(left_speed), abs(right_speed))
-        if max_speed > 1.0:
-            # Escalar proporcionalmente para mantener la dirección
-            scale_factor = 1.0 / max_speed
-            left_speed *= scale_factor
-            right_speed *= scale_factor
-        
-        # Asegurar que están en rango después de la normalización
+        # Normalización proporcional si excede límites
+        max_magnitude = max(abs(left_speed), abs(right_speed))
+        if max_magnitude > 1.0:
+            scale = 1.0 / max_magnitude
+            left_speed *= scale
+            right_speed *= scale
+            
+        # Clamp final
         left_speed = max(-1.0, min(1.0, left_speed))
         right_speed = max(-1.0, min(1.0, right_speed))
         
-        self.set_motors(left_speed, right_speed)
-    
-    def stop_all(self):
-        """Detiene todos los motores."""
-        self.set_motors(0, 0)
-    
-    def coast_all(self):
-        """Pone todos los motores en modo coast (libre)."""
-        motor_a = self.hw_config.motor_a
-        motor_b = self.hw_config.motor_b
+        if debug:
+            print(f"Tank: fwd={forward:.2f}, turn={turn:.2f} → L={left_speed:.2f}, R={right_speed:.2f}")
         
-        # Desactivar todas las señales
-        for motor in [motor_a, motor_b]:
-            self.pi.write(motor.in1, 0)
-            self.pi.write(motor.in2, 0)
-            self.pi.set_PWM_dutycycle(motor.enable, 0)
-    
+        return self.set_motors(left_speed, right_speed)
+        
+    def stop(self):
+        """Parada rápida."""
+        self.pi.write(self.hw_config.motor_a.in1, 0)
+        self.pi.write(self.hw_config.motor_a.in2, 0)
+        self.pi.write(self.hw_config.motor_b.in1, 0)
+        self.pi.write(self.hw_config.motor_b.in2, 0)
+        self.pi.set_PWM_dutycycle(self.hw_config.motor_a.enable, 0)
+        self.pi.set_PWM_dutycycle(self.hw_config.motor_b.enable, 0)
+        
+    def coast(self):
+        """Modo coast (rueda libre)."""
+        self.stop()  # En L298N, stop y coast son equivalentes
+        
     def cleanup(self):
-        """Limpia recursos y cierra conexión pigpio."""
-        self.stop_all()
-        time.sleep(0.1)
-        self.pi.stop()
-        print("L298N Driver cerrado correctamente")
-    
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
+        """Limpieza de recursos."""
+        self.stop()
+        if self.pi.connected:
+            self.pi.stop()
 
 
-# Test del driver
-if __name__ == "__main__":
+# Función de test para verificar funcionamiento
+def test_driver():
+    """Test rápido del driver optimizado."""
+    print("🧪 Test L298N Driver Optimizado")
+    
     try:
-        with L298NDriver() as driver:
-            print("Probando motores...")
-            
-            # Test básico
-            print("Adelante 50%")
-            driver.tank_drive(0.5, 0)
-            time.sleep(2)
-            
-            print("Giro derecha")
-            driver.tank_drive(0, 0.5)
-            time.sleep(1)
-            
-            print("Giro izquierda")
-            driver.tank_drive(0, -0.5)
-            time.sleep(1)
-            
-            print("Atrás 50%")
-            driver.tank_drive(-0.5, 0)
-            time.sleep(2)
-            
-            print("Parar")
-            driver.stop_all()
-            
+        driver = L298NDriverOptimized()
+        
+        print("\n1. Test motores individuales:")
+        print("Motor A adelante 50%")
+        driver.set_motor_a(0.5)
+        time.sleep(1)
+        
+        print("Motor A atrás 50%")
+        driver.set_motor_a(-0.5)
+        time.sleep(1)
+        
+        print("Motor B adelante 50%")
+        driver.set_motor_b(0.5)
+        time.sleep(1)
+        
+        print("Motor B atrás 50%")
+        driver.set_motor_b(-0.5)
+        time.sleep(1)
+        
+        print("\n2. Test tank drive:")
+        print("Adelante")
+        driver.tank_drive(0.5, 0, debug=True)
+        time.sleep(1)
+        
+        print("Giro derecha")
+        driver.tank_drive(0.5, 0.5, debug=True)
+        time.sleep(1)
+        
+        print("Giro izquierda")
+        driver.tank_drive(0.5, -0.5, debug=True)
+        time.sleep(1)
+        
+        print("Giro en sitio derecha")
+        driver.tank_drive(0, 0.7, debug=True)
+        time.sleep(1)
+        
+        print("Parar")
+        driver.stop()
+        
     except KeyboardInterrupt:
-        print("\nTest interrumpido por usuario")
+        print("\nTest interrumpido")
     except Exception as e:
-        print(f"Error en test: {e}")
+        print(f"Error: {e}")
+    finally:
+        if 'driver' in locals():
+            driver.cleanup()
+
+
+if __name__ == "__main__":
+    test_driver()

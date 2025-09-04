@@ -11,9 +11,9 @@ import sys
 from config import get_config
 
 try:
-    from l298n_driver import L298NDriver
+    from l298n_driver import L298NDriverOptimized
 except ImportError:
-    print("❌ No se puede importar L298NDriver (pigpio no disponible)")
+    print("❌ No se puede importar L298NDriverOptimized (pigpio no disponible)")
     print("💡 Este script debe ejecutarse en el Raspberry Pi")
     sys.exit(1)
 
@@ -40,7 +40,7 @@ class MotorCalibrator:
         input("\n📋 Presiona Enter para continuar...")
         
         try:
-            self.driver = L298NDriver()
+            self.driver = L298NDriverOptimized()
             print("✅ Driver inicializado correctamente")
             
             self.test_individual_motors()
@@ -67,16 +67,16 @@ class MotorCalibrator:
             
             # Motor A (izquierdo)
             print(f"  🔄 Motor A (izquierdo) a {speed:.1f}")
-            self.driver.set_motor_speed('A', speed)
+            self.driver.set_motor_a(speed)
             time.sleep(3)
-            self.driver.stop_all()
+            self.driver.stop()
             time.sleep(1)
             
             # Motor B (derecho)
             print(f"  🔄 Motor B (derecho) a {speed:.1f}")
-            self.driver.set_motor_speed('B', speed)
+            self.driver.set_motor_b(speed)
             time.sleep(3)
-            self.driver.stop_all()
+            self.driver.stop()
             time.sleep(1)
             
             response = input("  ❓ ¿Motor A más rápido (a), Motor B más rápido (b), o Iguales (i)? [a/b/i]: ").lower().strip()
@@ -101,7 +101,7 @@ class MotorCalibrator:
             
             self.driver.tank_drive(speed, 0)
             time.sleep(4)
-            self.driver.stop_all()
+            self.driver.stop()
             time.sleep(2)
             
             direction = input(f"  ❓ ¿Hacia dónde se desvía? [izq/der/recto]: ").lower().strip()
@@ -188,7 +188,7 @@ class MotorCalibrator:
                 self.driver.hw_config.motor_b.power_factor = current_factor_b
                 self.driver.tank_drive(0.7, 0)
                 time.sleep(3)
-                self.driver.stop_all()
+                self.driver.stop()
             elif cmd == 'quit':
                 break
             
