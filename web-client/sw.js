@@ -1,8 +1,11 @@
-const CACHE_NAME = 't100-controller-v1.2';
+const CACHE_NAME = 't100-controller-v1.3';
 const STATIC_CACHE_URLS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './assets/favicon.svg',
+  './assets/icon-192.svg',
+  './assets/icon-512.svg'
 ];
 
 // Instalación del Service Worker

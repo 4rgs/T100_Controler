@@ -12,9 +12,13 @@ services:
       - sh
       - -c
       - |
+        mkdir -p /usr/local/apache2/htdocs/assets &&
         wget -O /usr/local/apache2/htdocs/index.html https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/client.html &&
         wget -O /usr/local/apache2/htdocs/manifest.json https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/manifest.json &&
         wget -O /usr/local/apache2/htdocs/sw.js https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/sw.js &&
+        wget -O /usr/local/apache2/htdocs/assets/favicon.svg https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/assets/favicon.svg &&
+        wget -O /usr/local/apache2/htdocs/assets/icon-192.svg https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/assets/icon-192.svg &&
+        wget -O /usr/local/apache2/htdocs/assets/icon-512.svg https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/assets/icon-512.svg &&
         httpd-foreground
     restart: unless-stopped
     labels:
