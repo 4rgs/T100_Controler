@@ -12,48 +12,106 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #0a182f);
-            color: white;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #34495e, #1a252f);
+            color: #ecf0f1;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
             user-select: none;
+            overflow-x: hidden;
         }
 
         .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .header {
             text-align: center;
+            margin-bottom: 30px;
             padding: 20px;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            width: 90%;
+            background: rgba(44, 62, 80, 0.9);
+            border-radius: 12px;
+            border: 1px solid #34495e;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: rgba(52, 73, 94, 0.9);
+            border-radius: 12px;
+            border: 1px solid #34495e;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
         }
 
         h1 {
-            margin-bottom: 20px;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            font-weight: 300;
+            color: #3498db;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
 
+        h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.4em;
+            font-weight: 400;
+            color: #95a5a6;
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            font-weight: 500;
+            color: #bdc3c7;
+        }
+
         .status {
-            margin-bottom: 20px;
-            padding: 10px;
+            margin: 0;
+            padding: 12px 20px;
             border-radius: 8px;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            min-width: 150px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .status.connected {
-            background: rgba(0, 255, 0, 0.2);
-            border: 1px solid #00ff00;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            border: 1px solid #27ae60;
+            color: white;
         }
 
         .status.disconnected {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid #ff0000;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            border: 1px solid #e74c3c;
+            color: white;
+        }
+
+        .status.connecting {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border: 1px solid #f39c12;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
         }
 
         .control-panel {
@@ -73,14 +131,15 @@
         .joystick {
             width: 200px;
             height: 200px;
-            border: 3px solid #fff;
+            border: 2px solid #3498db;
             border-radius: 50%;
             position: relative;
-            background: rgba(255, 255, 255, 0.1);
+            background: radial-gradient(circle, rgba(52, 152, 219, 0.1), rgba(44, 62, 80, 0.3));
             cursor: grab;
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: inset 0 0 20px rgba(52, 152, 219, 0.2), 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
         .joystick::before {
@@ -115,16 +174,17 @@
         }
 
         .joystick-knob {
-            width: 40px;
-            height: 40px;
-            background: #fff;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            border: 2px solid #ecf0f1;
             border-radius: 50%;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            transition: none; /* Removido para mejor respuesta */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.3);
+            transition: none;
             z-index: 2;
         }
 
@@ -137,58 +197,170 @@
 
         button {
             padding: 12px 24px;
-            font-size: 16px;
-            font-weight: bold;
+            font-size: 14px;
+            font-weight: 600;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            min-width: 120px;
+            transition: all 0.3s ease;
+            min-width: 140px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        button:active {
+            transform: translateY(0);
         }
 
         .btn-primary {
-            background: #398748;
+            background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
         }
 
         .btn-primary:hover {
-            background: #081c31;
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, #2980b9, #3498db);
         }
 
         .btn-danger {
-            background: #dc3545;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
             color: white;
         }
 
         .btn-danger:hover {
-            background: #c82333;
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
         }
 
         .btn-secondary {
-            background: #6c757d;
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
             color: white;
         }
 
         .btn-secondary:hover {
-            background: #545b62;
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, #7f8c8d, #95a5a6);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #e67e22, #f39c12);
         }
 
         .connection-panel {
-            margin-top: 20px;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(44, 62, 80, 0.5);
+            border: 1px solid #34495e;
+            margin-top: 15px;
         }
 
         input[type="text"] {
-            padding: 8px 12px;
-            margin: 0 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 10px 15px;
+            margin: 5px;
+            border: 1px solid #34495e;
+            border-radius: 6px;
             font-size: 14px;
+            background: rgba(52, 73, 94, 0.8);
+            color: #ecf0f1;
+            width: calc(50% - 12px);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(44, 62, 80, 0.6);
+            border: 1px solid #34495e;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #3498db;
+            margin: 8px 0 5px 0;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #95a5a6;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metrics-panel {
+            background: rgba(44, 62, 80, 0.9);
+            border: 1px solid #34495e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(52, 73, 94, 0.5);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #bdc3c7;
+        }
+
+        .metric-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            color: #3498db;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.online {
+            background: #27ae60;
+        }
+
+        .status-indicator.offline {
+            background: #e74c3c;
+            animation: none;
         }
 
         .info {
@@ -207,6 +379,10 @@
         }
 
         @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
             .control-panel {
                 grid-template-columns: 1fr;
             }
@@ -220,56 +396,125 @@
                 width: 150px;
                 height: 150px;
             }
+
+            input[type="text"] {
+                width: calc(100% - 12px);
+                margin: 5px 0;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚗 T100 Controller</h1>
-        
-        <div id="status" class="status disconnected">
-            Desconectado
+        <div class="header">
+            <h1>🤖T100 Web Remote Controller</h1>
+            <div class="connection-status">
+                <div id="status-indicator" class="status-indicator offline"></div>
+                <div id="status" class="status disconnected">Desconectado</div>
+            </div>
         </div>
 
-        <div class="control-panel">
-            <div>
-                <h3>Control de Movimiento</h3>
+        <div class="main-grid">
+            <!-- Panel de Control de Movimiento -->
+            <div class="panel">
+                <h2>Control de Movimiento</h2>
                 <div class="joystick-container">
                     <div id="joystick" class="joystick">
                         <div id="joystick-knob" class="joystick-knob"></div>
                     </div>
                 </div>
                 <div class="info">
-                    Arriba/Abajo: Adelante/Atrás<br>
-                    Izquierda/Derecha: Giro
+                    <small>Arriba/Abajo: Adelante/Atrás<br>
+                    Izquierda/Derecha: Giro</small>
                 </div>
             </div>
 
-            <div class="buttons">
-                <h3>Controles</h3>
-                <button id="btn-stop" class="btn-danger">🛑 PARAR</button>
-                <button id="btn-calibrate" class="btn-secondary">🎯 Calibrar</button>
-                <button id="btn-ping" class="btn-secondary">📡 Ping</button>
-                <button id="btn-status" class="btn-secondary">📊 Estado</button>
-                
-                <div class="connection-panel">
-                    <h4>Conexión</h4>
-                    <input type="text" id="server-ip" placeholder="IP del servidor" value="192.168.1.140">
-                    <input type="text" id="server-port" placeholder="Puerto" value="8080">
-                    <br><br>
-                    <button id="btn-connect" class="btn-primary">🔌 Conectar</button>
-                    <button id="btn-disconnect" class="btn-secondary">❌ Desconectar</button>
+            <!-- Panel de Controles -->
+            <div class="panel">
+                <h2>Controles del Sistema</h2>
+                <div class="buttons">
+                    <button id="btn-stop" class="btn-danger">🛑 Parada de Emergencia</button>
+                    <button id="btn-calibrate" class="btn-warning">🎯 Calibrar Sistema</button>
+                    <button id="btn-ping" class="btn-secondary">📡 Test de Conexión</button>
+                    <button id="btn-status" class="btn-secondary">📊 Estado del Robot</button>
+                </div>
+            </div>
+
+            <!-- Panel de Estadísticas -->
+            <div class="panel">
+                <h2>Estadísticas en Tiempo Real</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="forward-stat">0.00</div>
+                        <div class="stat-label">Avance</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="turn-stat">0.00</div>
+                        <div class="stat-label">Giro</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="left-stat">0.00</div>
+                        <div class="stat-label">Motor Izq.</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="right-stat">0.00</div>
+                        <div class="stat-label">Motor Der.</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="values">
-            <div>Forward: <span id="forward-value">0.00</span></div>
-            <div>Turn: <span id="turn-value">0.00</span></div>
-            <div>Left Motor: <span id="left-value">0.00</span></div>
-            <div>Right Motor: <span id="right-value">0.00</span></div>
-            <div>X Raw: <span id="x-raw-value">0.00</span></div>
-            <div>Y Raw: <span id="y-raw-value">0.00</span></div>
+        <!-- Panel de Conexión -->
+        <div class="metrics-panel">
+            <h2>Configuración de Conexión</h2>
+            <div class="connection-panel">
+                <input type="text" id="server-ip" placeholder="Dirección IP del Robot" value="192.168.1.140">
+                <input type="text" id="server-port" placeholder="Puerto" value="8080">
+                <br>
+                <button id="btn-connect" class="btn-primary">🔌 Conectar</button>
+                <button id="btn-disconnect" class="btn-secondary">❌ Desconectar</button>
+            </div>
+        </div>
+
+        <!-- Panel de Métricas Detalladas -->
+        <div class="metrics-panel">
+            <h2>Métricas del Sistema</h2>
+            <div class="metric-row">
+                <span class="metric-label">Velocidad Forward:</span>
+                <span class="metric-value" id="forward-value">0.00</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Velocidad Turn:</span>
+                <span class="metric-value" id="turn-value">0.00</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Motor Izquierdo:</span>
+                <span class="metric-value" id="left-value">0.00</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Motor Derecho:</span>
+                <span class="metric-value" id="right-value">0.00</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Posición X:</span>
+                <span class="metric-value" id="x-raw-value">0.00</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Posición Y:</span>
+                <span class="metric-value" id="y-raw-value">0.00</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Latencia (ms):</span>
+                <span class="metric-value" id="latency-value">--</span>
+            </div>
+            <div class="metric-row">
+                <span class="metric-label">Comandos Enviados:</span>
+                <span class="metric-value" id="commands-sent">0</span>
+            </div>
         </div>
     </div>
 
@@ -281,26 +526,41 @@
                 this.joystickActive = false;
                 this.currentX = 0;
                 this.currentY = 0;
+                this.commandsSent = 0;
+                this.lastPingTime = 0;
+                this.latency = 0;
                 
                 this.initElements();
                 this.initJoystick();
                 this.initEventListeners();
+                this.startMetricsUpdate();
             }
 
             initElements() {
                 this.statusEl = document.getElementById('status');
+                this.statusIndicatorEl = document.getElementById('status-indicator');
                 this.joystickEl = document.getElementById('joystick');
                 this.knobEl = document.getElementById('joystick-knob');
                 this.serverIpEl = document.getElementById('server-ip');
                 this.serverPortEl = document.getElementById('server-port');
                 
-                // Elementos de valores
+                // Elementos de valores principales
                 this.forwardValueEl = document.getElementById('forward-value');
                 this.turnValueEl = document.getElementById('turn-value');
                 this.leftValueEl = document.getElementById('left-value');
                 this.rightValueEl = document.getElementById('right-value');
                 this.xRawValueEl = document.getElementById('x-raw-value');
                 this.yRawValueEl = document.getElementById('y-raw-value');
+                
+                // Elementos de estadísticas
+                this.forwardStatEl = document.getElementById('forward-stat');
+                this.turnStatEl = document.getElementById('turn-stat');
+                this.leftStatEl = document.getElementById('left-stat');
+                this.rightStatEl = document.getElementById('right-stat');
+                
+                // Elementos de métricas
+                this.latencyValueEl = document.getElementById('latency-value');
+                this.commandsSentEl = document.getElementById('commands-sent');
             }
 
             initJoystick() {
@@ -436,13 +696,28 @@
                 leftSpeed = Math.max(-1.0, Math.min(1.0, leftSpeed));
                 rightSpeed = Math.max(-1.0, Math.min(1.0, rightSpeed));
                 
-                // Actualizar display
+                // Actualizar display principal
                 this.forwardValueEl.textContent = forward.toFixed(2);
                 this.turnValueEl.textContent = turn.toFixed(2);
                 this.leftValueEl.textContent = leftSpeed.toFixed(2);
                 this.rightValueEl.textContent = rightSpeed.toFixed(2);
                 this.xRawValueEl.textContent = this.currentX.toFixed(2);
                 this.yRawValueEl.textContent = this.currentY.toFixed(2);
+                
+                // Actualizar estadísticas
+                this.forwardStatEl.textContent = forward.toFixed(2);
+                this.turnStatEl.textContent = turn.toFixed(2);
+                this.leftStatEl.textContent = leftSpeed.toFixed(2);
+                this.rightStatEl.textContent = rightSpeed.toFixed(2);
+            }
+
+            startMetricsUpdate() {
+                setInterval(() => {
+                    this.commandsSentEl.textContent = this.commandsSent;
+                    if (this.latency > 0) {
+                        this.latencyValueEl.textContent = this.latency;
+                    }
+                }, 100);
             }
 
             initEventListeners() {
@@ -467,12 +742,14 @@
                 const port = this.serverPortEl.value || '8080';
                 const url = `ws://${ip}:${port}`;
                 
+                this.updateStatus('Conectando...', 'connecting');
+                
                 try {
                     this.ws = new WebSocket(url);
                     
                     this.ws.onopen = () => {
                         this.isConnected = true;
-                        this.updateStatus('Conectado a ' + url, true);
+                        this.updateStatus(`Conectado a ${ip}:${port}`, 'connected');
                         console.log('Conectado al servidor T100');
                     };
                     
@@ -487,18 +764,18 @@
                     
                     this.ws.onclose = () => {
                         this.isConnected = false;
-                        this.updateStatus('Desconectado', false);
+                        this.updateStatus('Desconectado', 'disconnected');
                         console.log('Desconectado del servidor');
                     };
                     
                     this.ws.onerror = (error) => {
                         console.error('WebSocket error:', error);
-                        this.updateStatus('Error de conexión', false);
+                        this.updateStatus('Error de conexión', 'disconnected');
                     };
                     
                 } catch (error) {
                     console.error('Error conectando:', error);
-                    this.updateStatus('Error de conexión', false);
+                    this.updateStatus('Error de conexión', 'disconnected');
                 }
             }
 
@@ -509,14 +786,18 @@
                 }
             }
 
-            updateStatus(message, connected) {
+            updateStatus(message, status) {
                 this.statusEl.textContent = message;
-                this.statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+                this.statusEl.className = `status ${status}`;
+                
+                // Actualizar indicador visual
+                this.statusIndicatorEl.className = `status-indicator ${status === 'connected' ? 'online' : 'offline'}`;
             }
 
             sendMessage(data) {
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(JSON.stringify(data));
+                    this.commandsSent++;
                 } else {
                     console.warn('WebSocket no está conectado');
                 }
@@ -551,8 +832,10 @@
             }
 
             ping() {
+                this.lastPingTime = Date.now();
                 this.sendMessage({
-                    type: 'ping'
+                    type: 'ping',
+                    timestamp: this.lastPingTime
                 });
             }
 
@@ -570,7 +853,12 @@
                         console.log('Bienvenida:', data.message);
                         break;
                     case 'pong':
-                        console.log('Pong recibido');
+                        if (data.timestamp && this.lastPingTime) {
+                            this.latency = Date.now() - this.lastPingTime;
+                            console.log(`Pong recibido - Latencia: ${this.latency}ms`);
+                        } else {
+                            console.log('Pong recibido');
+                        }
                         break;
                     case 'error':
                         console.error('Error del servidor:', data.message);
@@ -578,6 +866,7 @@
                         break;
                     case 'status':
                         console.log('Estado del servidor:', data);
+                        // Aquí podrías mostrar más información del estado
                         break;
                 }
             }
