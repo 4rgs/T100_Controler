@@ -42,7 +42,7 @@ class ServerConfig:
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
         motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False, power_factor=1.0, pwm_inverted=False),  # Motor izquierdo - normal
-        motor_b=MotorPins(enable=19, in1=21, in2=26, invert=False, power_factor=1.0, pwm_inverted=False),   # Motor derecho - PWM INVERTIDO
+        motor_b=MotorPins(enable=19, in1=21, in2=26, invert=False, power_factor=1.0, pwm_inverted=True),   # Motor derecho - PWM INVERTIDO
         pwm_frequency=1000,
         max_pwm_percent=100.0  # Sin límite PWM - potencia completa
     ),

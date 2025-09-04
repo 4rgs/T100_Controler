@@ -157,9 +157,9 @@ class L298NDriverOptimized:
         forward = max(-1.0, min(1.0, forward))
         turn = max(-1.0, min(1.0, turn))
         
-        # Algoritmo tank drive corregido
-        left_speed = forward - turn   # Giro derecha (+turn) = motor izq más lento
-        right_speed = forward + turn  # Giro derecha (+turn) = motor der más rápido
+        # Algoritmo tank drive corregido (giros invertidos)
+        left_speed = forward + turn   # Giro derecha (+turn) = motor izq más rápido
+        right_speed = forward - turn  # Giro derecha (+turn) = motor der más lento
         
         # Normalización proporcional si excede límites
         max_magnitude = max(abs(left_speed), abs(right_speed))
