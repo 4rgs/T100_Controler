@@ -50,11 +50,35 @@ class ServerConfig:
     debug: bool = False
 
 
+# Configuración ULTRA-BAJA LATENCIA para respuesta máxima
+ULTRA_LOW_LATENCY_CONFIG = {
+    "hardware": HardwareConfig(
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),
+        motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False),
+        pwm_frequency=20000  # PWM ultra-alto para respuesta instantánea
+    ),
+    "joystick": JoystickConfig(
+        deadzone=0.01,        # Deadzone mínimo para máxima sensibilidad
+        non_linear_factor=0.8, # Respuesta más lineal
+        turn_factor=1.2       # Factor de giro optimizado
+    ),
+    "gamepad": GamepadConfig(
+        deadzone=0.02,        # Deadzone gamepad ultra-bajo
+        invert_y_axis=True,
+        non_linear_factor=0.9
+    ),
+    "server": ServerConfig(
+        host="0.0.0.0",
+        port=5000,           # Puerto optimizado
+        debug=False
+    )
+}
+
 # Configuración por defecto del usuario
 # IMPORTANTE: Ajustar según el comportamiento real de tus motores
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=True),  # Motor A (izq) - OK
+        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False),  # Motor A (izq) - OK
         motor_b=MotorPins(enable=26, in1=21, in2=19, invert=False),  # Motor B (der) - PROBLEMA COAST
         pwm_frequency=4000
     ),
@@ -107,3 +131,8 @@ def get_config() -> dict:
 def get_alt_config() -> dict:
     """Retorna configuración alternativa con pines intercambiados para Motor B."""
     return ALT_CONFIG_PINS_SWAPPED
+
+
+def get_ultra_low_latency_config() -> dict:
+    """Retorna configuración optimizada para latencia ultra-baja."""
+    return ULTRA_LOW_LATENCY_CONFIG

@@ -44,82 +44,248 @@ function centerStick(){
     sendXY(0,0); 
 }
 
-/* ====== WebSocket (last-write-wins) ====== */
-let ws=null, wsOpen=false, last={x:0,y:0}, sending=false, pending=false;
+/* ====== WebSocket Ultra-Optimizado con AbortController ====== */
+let ws = null;
+let wsOpen = false;
+let last = {x: 0, y: 0};
+let commandQueue = [];
+let currentController = null;
+let lastSendTime = 0;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 10;
-const baseReconnectDelay = 500;
 
-function connectWS(){
-    try{
-        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        ws = new WebSocket(`${proto}://${location.host}/ws/joystick`);
-        document.getElementById('wsstat').textContent = 'ws: conectando…';
+// Configuración de latencia ultra-baja
+const LATENCY_CONFIG = {
+    maxDelay: 100,           // Máximo delay permitido (100ms)
+    batchInterval: 8,        // Enviar cada 8ms (125 FPS)
+    abortTimeout: 50,        // Abortar comandos > 50ms
+    priorityThreshold: 0.01  // Cambios mínimos para enviar
+};
+
+// Queue de comandos con timestamp
+class CommandQueue {
+    constructor() {
+        this.queue = [];
+        this.processing = false;
+    }
+    
+    add(command) {
+        const now = performance.now();
+        command.timestamp = now;
         
-        ws.onopen = ()=>{
-            wsOpen=true; 
-            reconnectAttempts = 0; // Reset contador de reconexión
-            document.getElementById('wsstat').textContent='ws: conectado'; 
-            document.getElementById('wsstat').className='pill ok';
-            console.log('🔌 WebSocket conectado');
-        };
+        // Abortar comandos antiguos
+        this.abortOldCommands(now);
         
-        ws.onclose = (event)=>{
-            wsOpen=false; 
-            console.log(`🔌 WebSocket cerrado. Código: ${event.code}, Razón: ${event.reason}`);
+        // Solo agregar si el cambio es significativo
+        if (this.isSignificantChange(command)) {
+            this.queue.push(command);
+            this.processQueue();
+        }
+    }
+    
+    abortOldCommands(currentTime) {
+        this.queue = this.queue.filter(cmd => {
+            const age = currentTime - cmd.timestamp;
+            return age < LATENCY_CONFIG.abortTimeout;
+        });
+    }
+    
+    isSignificantChange(command) {
+        if (this.queue.length === 0) return true;
+        const lastCmd = this.queue[this.queue.length - 1];
+        const deltaX = Math.abs(command.x - lastCmd.x);
+        const deltaY = Math.abs(command.y - lastCmd.y);
+        return deltaX > LATENCY_CONFIG.priorityThreshold || 
+               deltaY > LATENCY_CONFIG.priorityThreshold;
+    }
+    
+    processQueue() {
+        if (this.processing || this.queue.length === 0 || !wsOpen) return;
+        
+        this.processing = true;
+        const command = this.queue.shift();
+        
+        // Verificar si el comando sigue siendo válido
+        const age = performance.now() - command.timestamp;
+        if (age > LATENCY_CONFIG.maxDelay) {
+            this.processing = false;
+            this.processQueue(); // Procesar siguiente
+            return;
+        }
+        
+        this.sendCommand(command);
+    }
+    
+    sendCommand(command) {
+        if (!ws || !wsOpen) {
+            this.processing = false;
+            return;
+        }
+        
+        try {
+            const payload = JSON.stringify({
+                x: command.x,
+                y: command.y,
+                timestamp: command.timestamp,
+                priority: 'high'
+            });
             
-            document.getElementById('wsstat').textContent='ws: reconectando…'; 
-            document.getElementById('wsstat').className='pill bad';
+            ws.send(payload);
+            last.x = command.x;
+            last.y = command.y;
+            lastSendTime = performance.now();
             
-            // Reconexión automática con backoff exponencial
-            if (reconnectAttempts < maxReconnectAttempts) {
-                const delay = baseReconnectDelay * Math.pow(2, Math.min(reconnectAttempts, 5));
-                reconnectAttempts++;
-                console.log(`🔄 Reintentando conexión ${reconnectAttempts}/${maxReconnectAttempts} en ${delay}ms`);
-                setTimeout(connectWS, delay);
-            } else {
-                document.getElementById('wsstat').textContent='ws: error permanente'; 
-                console.error('❌ Máximo de intentos de reconexión alcanzado');
-            }
-        };
+        } catch (error) {
+            console.error('❌ Error enviando comando:', error);
+        }
         
-        ws.onerror = (error)=>{
-            wsOpen=false; 
-            console.error('❌ Error en WebSocket:', error);
-            document.getElementById('wsstat').textContent='ws: error'; 
-            document.getElementById('wsstat').className='pill bad';
-            try{ws.close();}catch(e){}
-        };
+        this.processing = false;
         
-        ws.onmessage = (ev)=>{ 
-            try{ 
-                const h=JSON.parse(ev.data); 
-                updateHUD(h); 
-            }catch(e){
-                console.error('❌ Error parseando mensaje WebSocket:', e);
-            } 
-        };
-    }catch(e){ 
-        console.error('❌ Error creando WebSocket:', e);
-        if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = baseReconnectDelay * Math.pow(2, Math.min(reconnectAttempts, 3));
-            reconnectAttempts++;
-            setTimeout(connectWS, delay);
+        // Procesar siguiente comando inmediatamente si existe
+        if (this.queue.length > 0) {
+            setTimeout(() => this.processQueue(), 1);
         }
     }
 }
 
-function sendXY(x,y){
-    last = {x,y};
-    if(!wsOpen) {
-        console.log('⚠️ WebSocket no conectado, descartando datos');
-        return;
+const cmdQueue = new CommandQueue();
+const baseReconnectDelay = 500;
+
+// WebSocket ultra-optimizado
+function connectWS(){
+    if(ws && ws.readyState === WebSocket.CONNECTING) return;
+    
+    try {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        ws = new WebSocket(`${proto}://${location.host}/ws/joystick`);
+        
+        // Configuración de buffer ultra-baja latencia
+        ws.binaryType = 'arraybuffer';
+        
+        document.getElementById('wsstat').textContent = 'ws: conectando…';
+        document.getElementById('wsstat').className = 'pill warning';
+        
+        ws.onopen = () => {
+            wsOpen = true; 
+            reconnectAttempts = 0;
+            document.getElementById('wsstat').textContent = 'ws: conectado'; 
+            document.getElementById('wsstat').className = 'pill ok';
+            
+            console.log('� WebSocket conectado con latencia ultra-baja');
+            
+            // Enviar configuración de latencia
+            ws.send(JSON.stringify({
+                type: 'config',
+                latencyMode: 'ultra-low',
+                batchInterval: LATENCY_CONFIG.batchInterval
+            }));
+        };
+        
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                // Medir latencia real
+                if (data.timestamp) {
+                    const latency = performance.now() - data.timestamp;
+                    updateLatencyDisplay(latency);
+                }
+                
+                // Actualizar estado de motores si está disponible
+                if (data.A && data.B) {
+                    updateMotorStatus(data.A, data.B);
+                }
+                
+            } catch (e) {
+                console.warn('⚠️ Error procesando respuesta:', e);
+            }
+        };
+        
+        ws.onclose = (event) => {
+            wsOpen = false; 
+            console.log(`🔌 WebSocket cerrado: ${event.code}`);
+            
+            document.getElementById('wsstat').textContent = 'ws: reconectando…'; 
+            document.getElementById('wsstat').className = 'pill bad';
+            
+            // Reconexión exponencial con límite
+            if (reconnectAttempts < maxReconnectAttempts) {
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+                reconnectAttempts++;
+                console.log(`🔄 Reconectando en ${delay}ms (intento ${reconnectAttempts})`);
+                setTimeout(connectWS, delay);
+            } else {
+                document.getElementById('wsstat').textContent = 'ws: error permanente'; 
+                document.getElementById('wsstat').className = 'pill bad';
+            }
+        };
+        
+        ws.onerror = (error) => {
+            console.error('❌ Error WebSocket:', error);
+        };
+        
+    } catch (error) {
+        console.error('❌ Error creando WebSocket:', error);
     }
-    if(!sending){ 
-        pump(); 
-    } else { 
-        pending = true; 
-    }   // hay un frame más nuevo
+}
+
+// Función optimizada para envío ultra-rápido
+function sendXY(x, y) {
+    // Aplicar deadzone en cliente para reducir tráfico
+    const deadzone = 0.02;
+    if (Math.abs(x) < deadzone) x = 0;
+    if (Math.abs(y) < deadzone) y = 0;
+    
+    // Solo enviar si hay cambio significativo
+    const deltaX = Math.abs(x - last.x);
+    const deltaY = Math.abs(y - last.y);
+    
+    if (deltaX < LATENCY_CONFIG.priorityThreshold && 
+        deltaY < LATENCY_CONFIG.priorityThreshold) {
+        return; // Sin cambios significativos
+    }
+    
+    // Agregar a queue con prioridad
+    cmdQueue.add({
+        x: x,
+        y: y,
+        priority: (Math.abs(x) > 0.8 || Math.abs(y) > 0.8) ? 'critical' : 'normal'
+    });
+    
+    // Actualizar display inmediatamente para responsividad visual
+    updateJoystickDisplay(x, y);
+}
+
+// Funciones auxiliares para UI responsiva
+function updateLatencyDisplay(latency) {
+    const latencyEl = document.getElementById('latency');
+    if (latencyEl) {
+        latencyEl.textContent = `${Math.round(latency)}ms`;
+        latencyEl.className = latency < 50 ? 'pill ok' : 
+                             latency < 100 ? 'pill warning' : 'pill bad';
+    }
+}
+
+function updateMotorStatus(motorA, motorB) {
+    // Actualizar estado de motores en UI si existe
+    const motorAEl = document.getElementById('motor-a-status');
+    const motorBEl = document.getElementById('motor-b-status');
+    
+    if (motorAEl) {
+        motorAEl.textContent = `A: ${motorA.speed || 0}% ${motorA.direction || 'stop'}`;
+    }
+    if (motorBEl) {
+        motorBEl.textContent = `B: ${motorB.speed || 0}% ${motorB.direction || 'stop'}`;
+    }
+}
+
+function updateJoystickDisplay(x, y) {
+    // Actualización visual inmediata sin esperar respuesta del servidor
+    const xEl = document.getElementById('joy-x');
+    const yEl = document.getElementById('joy-y');
+    
+    if (xEl) xEl.textContent = x.toFixed(2);
+    if (yEl) yEl.textContent = y.toFixed(2);
 }
 
 function pump(){

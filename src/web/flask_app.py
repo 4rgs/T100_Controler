@@ -140,58 +140,103 @@ class OptimizedFlaskAppProduction:
         
         @self.sock.route('/ws/joystick')
         def websocket_joystick(ws):
-            """WebSocket optimizado para joystick."""
-            self._connection_count += 1
-            connection_id = self._connection_count
+            """WebSocket ultra-optimizado para control en tiempo real."""
+            connection_start = time.time()
+            command_count = 0
+            error_count = 0
+            
+            # Configuración de latencia ultra-baja
+            batch_interval = 0.008  # 8ms por defecto (125 FPS)
+            last_process_time = 0
             
             if self.debug_mode:
-                print(f"🔌 WebSocket #{connection_id} conectado")
-            
-            connection_active = True
-            error_count = 0
-            max_errors = 5
+                print("� WebSocket conectado con latencia ultra-baja")
             
             try:
-                while connection_active and error_count < max_errors:
+                while True:
+                    # Timeout ultra-corto para responsividad
+                    ws.sock.settimeout(0.001)  # 1ms timeout
+                    
                     try:
-                        data = ws.receive(timeout=0.5)
-                        if data:
-                            self._last_data_time = int(time.time())
-                            self._process_joystick_data(data, connection_id)
-                            error_count = 0  # Reset contador de errores en éxito
+                        msg = ws.receive()
+                        if msg is None:
+                            break
                             
-                    except TimeoutError:
+                        current_time = time.time()
+                        
+                        # Rate limiting inteligente
+                        if current_time - last_process_time < batch_interval:
+                            continue
+                            
+                        last_process_time = current_time
+                        command_count += 1
+                        
+                        # Parse comando
+                        if isinstance(msg, (bytes, bytearray)):
+                            msg = msg.decode('utf-8')
+                            
+                        data = json.loads(msg)
+                        
+                        # Manejar configuración de latencia
+                        if data.get('type') == 'config':
+                            batch_interval = data.get('batchInterval', 8) / 1000.0
+                            if self.debug_mode:
+                                print(f"⚡ Configuración latencia: {batch_interval*1000:.1f}ms")
+                            continue
+                        
+                        # Verificar timeout de comando
+                        if 'timestamp' in data:
+                            command_age = (time.time() * 1000) - data['timestamp']
+                            if command_age > 100:  # Descartar comandos > 100ms
+                                continue
+                        
+                        # Extraer coordenadas con validación ultra-rápida
+                        x = max(-1.0, min(1.0, float(data.get("x", 0.0))))
+                        y = max(-1.0, min(1.0, float(data.get("y", 0.0))))
+                        
+                        # Aplicar al controlador inmediatamente
+                        if self.joystick_controller:
+                            self.joystick_controller.update(x, y)
+                            
+                        # Respuesta mínima para medir latencia
+                        if command_count % 10 == 0:  # Solo cada 10 comandos
+                            response = {
+                                "timestamp": data.get('timestamp', time.time() * 1000),
+                                "cmd": command_count
+                            }
+                            ws.send(json.dumps(response))
+                            
+                    except ws.sock.timeout:
                         # Timeout normal, continuar
                         continue
-                    except ConnectionError:
-                        # Conexión cerrada normalmente
-                        if self.debug_mode:
-                            print(f"🔌 WebSocket #{connection_id} desconectado normalmente")
-                        connection_active = False
-                        break
+                    except json.JSONDecodeError:
+                        error_count += 1
+                        if error_count > 100:  # Demasiados errores
+                            break
+                        continue
                     except Exception as e:
                         error_count += 1
-                        error_msg = str(e)
-                        if "Connection closed" in error_msg:
-                            if self.debug_mode:
-                                print(f"🔌 WebSocket #{connection_id} cerrado por cliente")
-                            connection_active = False
+                        if self.debug_mode and error_count < 5:
+                            print(f"⚠️ Error procesando comando: {e}")
+                        if error_count > 50:
                             break
-                        else:
-                            if self.debug_mode or error_count == 1:
-                                print(f"❌ Error #{error_count} en WebSocket #{connection_id}: {e}")
-                            if error_count >= max_errors:
-                                print(f"💥 Demasiados errores en WebSocket #{connection_id}, cerrando")
-                                connection_active = False
+                        continue
                         
             except Exception as e:
-                print(f"💥 Error crítico en WebSocket #{connection_id}: {e}")
-            finally:
                 if self.debug_mode:
-                    print(f"🔌 Limpiando WebSocket #{connection_id}")
+                    print(f"❌ Error en WebSocket: {e}")
+            finally:
                 # Detener motores al desconectar
                 if self.joystick_controller:
                     self.joystick_controller.stop()
+                    
+                connection_duration = time.time() - connection_start
+                if self.debug_mode:
+                    print(f"🔌 WebSocket desconectado. Duración: {connection_duration:.1f}s, "
+                          f"Comandos: {command_count}, Errores: {error_count}")
+                    if command_count > 0:
+                        avg_rate = command_count / connection_duration
+                        print(f"📊 Promedio: {avg_rate:.1f} comandos/seg")
     
     def _process_joystick_data(self, data: str, connection_id: int = 0) -> None:
         """Procesa datos del joystick con throttling."""
