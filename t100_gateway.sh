@@ -334,6 +334,48 @@ reinstall_service() {
     status
 }
 
+# Fix específico para problemas de JoystickConfig
+fix_joystick_config() {
+    log_info "Aplicando fix para JoystickConfig..."
+    
+    # Parar el servicio
+    sudo systemctl stop $T100_SERVICE_NAME 2>/dev/null || true
+    
+    # Actualizar código forzado
+    cd "$T100_INSTALL_DIR"
+    git fetch origin $T100_BRANCH
+    git reset --hard origin/$T100_BRANCH
+    
+    # Verificar que main.py existe y está actualizado
+    if [[ ! -f "main.py" ]]; then
+        log_error "main.py no encontrado, recreando..."
+        log_info "Reinstalando completamente..."
+        reinstall_service
+        return
+    fi
+    
+    # Verificar dependencias
+    source venv/bin/activate
+    pip install -r requirements.txt --quiet
+    
+    # Verificar que el archivo de configuración tiene turn_factor
+    if ! python3 -c "from src.config.settings import JoystickConfig; c = JoystickConfig(); print(c.turn_factor)" 2>/dev/null; then
+        log_warning "turn_factor no encontrado, actualizando configuración..."
+        git pull origin $T100_BRANCH --force
+    fi
+    
+    # Recrear servicio para asegurar que usa main.py
+    create_systemd_service
+    
+    # Reiniciar servicio
+    sudo systemctl enable $T100_SERVICE_NAME
+    sudo systemctl start $T100_SERVICE_NAME
+    
+    log_info "Fix aplicado. Verificando..."
+    sleep 3
+    status
+}
+
 # Monitorear recursos
 monitor_resources() {
     while true; do
@@ -549,6 +591,7 @@ show_help() {
     echo "  run         Ejecutar en modo directo (sin servicio)"
     echo "  update      Actualizar desde repositorio"
     echo "  reinstall   Reinstalar servicio completamente"
+    echo "  fix-joystick Fix específico para errores de JoystickConfig"
     echo "  status      Mostrar estado del sistema"
     echo "  verify      Verificación completa del sistema"
     echo "  monitor     Monitorear recursos en tiempo real"
@@ -605,6 +648,9 @@ main() {
             ;;
         reinstall)
             reinstall_service
+            ;;
+        fix-joystick)
+            fix_joystick_config
             ;;
         status)
             status

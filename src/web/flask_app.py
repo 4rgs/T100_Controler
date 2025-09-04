@@ -7,8 +7,10 @@ Versión de producción con debug mínimo para flask_app_optimized.py
 
 import json
 import logging
+import os
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, Optional
 
 from flask import Flask, render_template, jsonify, request
@@ -24,9 +26,23 @@ class OptimizedFlaskAppProduction:
     """Aplicación Flask optimizada para producción (debug mínimo)."""
     
     def __init__(self, debug_mode: bool = False):
-        self.app = Flask(__name__, template_folder='../../templates', static_folder='../../static')
+        # Calcular rutas absolutas basadas en la ubicación de este archivo
+        current_file = Path(__file__).resolve()
+        src_dir = current_file.parent.parent  # desde src/web/ a src/
+        templates_dir = src_dir / "templates"
+        static_dir = src_dir.parent / "static"  # desde src/ a raíz/static/
+        
+        self.app = Flask(__name__, 
+                        template_folder=str(templates_dir), 
+                        static_folder=str(static_dir))
         self.sock = Sock(self.app)
         self.debug_mode = debug_mode
+        
+        if debug_mode:
+            print(f"🗂️ Templates directory: {templates_dir}")
+            print(f"📁 Static directory: {static_dir}")
+            print(f"✅ Templates exist: {templates_dir.exists()}")
+            print(f"✅ Static exist: {static_dir.exists()}")
         
         # Configurar logging mínimo
         logging.getLogger('werkzeug').setLevel(logging.WARNING)
