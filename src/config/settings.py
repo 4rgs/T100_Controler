@@ -31,6 +31,7 @@ class JoystickConfig:
     """Configuración del joystick virtual."""
     deadzone: float = 0.03
     non_linear_factor: float = 1.0
+    turn_factor: float = 1.0  # Factor de multiplicación para giros
 
 
 @dataclass
