@@ -26,6 +26,11 @@
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #2c3e50, #34495e, #1a252f);
@@ -35,6 +40,7 @@
             padding: 20px;
             user-select: none;
             overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .container {
@@ -1030,10 +1036,10 @@
             }
         }
 
-        // Inicializar controlador y PWA cuando la página esté lista
+        // Inicializar controlador y PWA cuando la página esté ready
         document.addEventListener('DOMContentLoaded', () => {
-            const controller = new T100Controller();
-            const pwaManager = new PWAManager();
+            new T100Controller();
+            new PWAManager();
             
             // Conectar automáticamente si es localhost
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
