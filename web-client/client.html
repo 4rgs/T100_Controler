@@ -587,11 +587,12 @@
                 document.addEventListener('mouseup', () => this.endJoystick());
 
                 // Touch events para móviles
+                // Usar passive: false para poder llamar a preventDefault() sin warnings
                 joystick.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
                     this.startJoystick(touch);
-                });
+                }, { passive: false });
                 
                 document.addEventListener('touchmove', (e) => {
                     e.preventDefault();
@@ -599,7 +600,7 @@
                         const touch = e.touches[0];
                         this.moveJoystick(touch);
                     }
-                });
+                }, { passive: false });
                 
                 document.addEventListener('touchend', () => this.endJoystick());
             }
@@ -755,7 +756,10 @@
             connect() {
                 const ip = this.serverIpEl.value || 'localhost';
                 const port = this.serverPortEl.value || '8080';
-                const url = `ws://${ip}:${port}`;
+                
+                // Seleccionar ws o wss según el protocolo de la página para evitar Mixed Content
+                const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                const url = `${scheme}://${ip}:${port}`;
                 
                 this.updateStatus('Conectando...', 'connecting');
                 
