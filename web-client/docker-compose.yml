@@ -25,6 +25,6 @@ services:
       - "casaos.name=T100 Web Controller"
       - "casaos.description=Cliente web para control del robot T100"
       - "casaos.category=Utilities"
-      - "casaos.icon=https://cdn-icons-png.flaticon.com/512/2933/2933245.png"
+      - "casaos.icon=https://raw.githubusercontent.com/4rgs/T100_Controler/develop/web-client/assets/icon-192.svg"
       - "casaos.port_map=8084"
       - "casaos.scheme=http"
