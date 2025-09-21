@@ -1,2 +1,7 @@
+# Dependencias originales
 pigpio==1.78
 websockets==12.0
+
+# Dependencias para ELRS
+pyserial==3.5
+asyncio-mqtt==0.13.0

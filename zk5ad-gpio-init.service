@@ -1,0 +1,15 @@
+[Unit]
+Description=ZK-5AD GPIO Initialization Service
+After=pigpiod.service
+Requires=pigpiod.service
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/4rgs/t100/zk5ad_gpio_init.py
+User=root
+Group=root
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

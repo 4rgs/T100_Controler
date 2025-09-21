@@ -12,22 +12,20 @@ from dataclasses import dataclass
 
 @dataclass
 class MotorPins:
-    """Configuración de pines para un motor."""
-    enable: int
-    in1: int
-    in2: int
+    """Configuración de pines para un motor ZK-5AD (TA6586)."""
+    in1: int  # Pin IN1 - PWM para control de velocidad/dirección
+    in2: int  # Pin IN2 - PWM para control de velocidad/dirección
     invert: bool = False
     power_factor: float = 1.0  # Factor de calibración de potencia (0.5 - 1.5)
-    pwm_inverted: bool = False  # PWM invertido: 0=máximo, 255=parado
 
 
 @dataclass
 class HardwareConfig:
-    """Configuración del hardware L298N."""
+    """Configuración del hardware ZK-5AD (TA6586)."""
     motor_a: MotorPins  # Motor izquierdo
     motor_b: MotorPins  # Motor derecho
     pwm_frequency: int = 1000
-    max_pwm_percent: float = 33.0  # Límite máximo PWM en porcentaje (0-100)
+    max_pwm_percent: float = 100  # Límite máximo PWM en porcentaje (0-100)
 
 
 @dataclass
@@ -38,12 +36,12 @@ class ServerConfig:
     debug: bool = False
 
 
-# Configuración por defecto
+# Configuración por defecto para ZK-5AD (TA6586)
 DEFAULT_CONFIG = {
     "hardware": HardwareConfig(
-        motor_a=MotorPins(enable=12, in1=16, in2=20, invert=False, power_factor=1.0, pwm_inverted=False),  # Motor izquierdo - normal
-        motor_b=MotorPins(enable=19, in1=21, in2=26, invert=False, power_factor=1.0, pwm_inverted=True),   # Motor derecho - PWM INVERTIDO
-        pwm_frequency=1000,
+        motor_a=MotorPins(in1=12, in2=13, invert=True, power_factor=1.0), # Motor A: D0->GPIO13(PWM1), D1->GPIO18(PWM0)
+        motor_b=MotorPins(in1=18, in2=19, invert=True, power_factor=1.0),  # Motor B: D2->GPIO19(PWM1), D3->GPIO20(normal) - Evitando GPIO12 problemático
+        pwm_frequency=4000,
         max_pwm_percent=100.0  # Sin límite PWM - potencia completa
     ),
     "server": ServerConfig(
@@ -117,14 +115,12 @@ def get_calibrated_config(calibration_name: str) -> dict:
         motor_a=MotorPins(
             enable=12, in1=16, in2=20, 
             invert=False, 
-            power_factor=calib["motor_a_factor"],
-            pwm_inverted=False
+            power_factor=calib["motor_a_factor"]
         ),
         motor_b=MotorPins(
             enable=19, in1=21, in2=26, 
             invert=False, 
-            power_factor=calib["motor_b_factor"],
-            pwm_inverted=True
+            power_factor=calib["motor_b_factor"]
         ),
         pwm_frequency=2000,
         max_pwm_percent=100
@@ -158,14 +154,12 @@ def set_custom_calibration(motor_a_factor: float, motor_b_factor: float) -> dict
         motor_a=MotorPins(
             enable=12, in1=16, in2=20, 
             invert=False, 
-            power_factor=motor_a_factor,
-            pwm_inverted=False
+            power_factor=motor_a_factor
         ),
         motor_b=MotorPins(
             enable=19, in1=21, in2=26, 
             invert=False, 
-            power_factor=motor_b_factor,
-            pwm_inverted=True
+            power_factor=motor_b_factor
         ),
         pwm_frequency=2000,
         max_pwm_percent=100

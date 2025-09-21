@@ -31,16 +31,29 @@ echo
 echo "📁 Creando directorio remoto..."
 ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "mkdir -p $PROJECT_DIR"
 
-# Archivos a transferir (solo esenciales para API)
+# Lista de archivos a transferir - Proyecto T100 ZK-5AD limpio
 FILES=(
+    # Configuración
     "config.py"
-    "l298n_driver.py"
-    "server.py"
-    "client.html"
-    "calibrate_motors.py"
     "requirements.txt"
     "install.sh"
-    "README.md"
+    
+    # Sistema ELRS
+    "elrs_receiver_ultra_fast.py"
+    
+    # ZK-5AD Driver y Controller principal
+    "zk5ad_driver_ta6586.py"
+    "t100_controller.py"
+    
+    # ZK-5AD GPIO Initialization
+    "zk5ad_gpio_init.py"
+    "zk5ad-gpio-init.service"
+    
+    # Herramientas de emergencia
+    "emergency_stop.py"
+    
+    # Documentación
+    "CABLEADO_ZK5AD.md"
 )
 
 # Transferir archivos
@@ -54,24 +67,48 @@ done
 echo "🔧 Configurando permisos..."
 ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "chmod +x $PROJECT_DIR/install.sh"
 
+# Instalar servicio de inicialización ZK-5AD
+echo "⚙️  Instalando servicio de inicialización ZK-5AD..."
+ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "
+    sudo cp $PROJECT_DIR/zk5ad-gpio-init.service /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable zk5ad-gpio-init.service
+    echo '✅ Servicio ZK-5AD inicialización instalado'
+"
+
 echo
-echo "✅ Despliegue completado!"
-echo
-echo "🚀 Próximos pasos en el Raspberry Pi:"
-echo "1. ssh $RPI_USER@$RPI_IP"
-echo "2. cd $PROJECT_DIR"
-echo "3. ./install.sh"
-echo "4. python3 calibrate_motors.py  # Calibrar motores si es necesario"
-echo "5. sudo systemctl start t100"
-echo
-echo "🌐 Una vez instalado, abrir client.html en el navegador:"
-echo "   - Configurar IP: $RPI_IP"
-echo "   - Puerto: 8080"
-echo "   - Conectar y controlar!"
-echo
-echo "🔧 Para calibración de motores:"
-echo "   python3 calibrate_motors.py  # Calibrar motores"
-echo
-echo "📊 Para monitorear:"
-echo "   ssh $RPI_USER@$RPI_IP"
-echo "   sudo journalctl -u t100 -f"
+echo "✅ Despliegue completado!
+🚀 T100 ZK-5AD CONTROLLER - Proyecto refactorizado y limpio
+
+📋 Ejecutar en el Raspberry Pi:
+1. ssh 4rgs@192.168.1.140
+2. cd /home/4rgs/t100
+3. python3 t100_controller.py
+
+🎯 CONTROLADOR PRINCIPAL:
+   python3 t100_controller.py
+   ✅ ZK-5AD (TA6586) Tank Drive
+   ✅ CH2 → Forward/Back, CH4 → Left/Right
+   ✅ Control con palanca derecha únicamente
+   ✅ Failsafe automático
+   ✅ Logging y monitoreo
+
+🎮 CONTROLES:
+   Palanca derecha VERTICAL: Adelante/Atrás
+   Palanca derecha HORIZONTAL: Izquierda/Derecha
+   Palanca izquierda: IGNORADA
+
+🚨 HERRAMIENTAS:
+   python3 emergency_stop.py     # Parada inmediata
+   
+📚 DOCUMENTACIÓN:
+   cat CABLEADO_ZK5AD.md         # Guía de cableado completa
+
+🧹 PROYECTO REFACTORIZADO:
+   ✅ Solo ZK-5AD (TA6586) - Eliminado L298N obsoleto
+   ✅ Controlador único y moderno  
+   ✅ Configuración GPIO automática al boot
+   ✅ Código limpio y mantenible
+   - Solo 15 archivos esenciales
+   - Sin versiones antiguas ni código muerto
+   - Máxima simplicidad y rendimiento"
