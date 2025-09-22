@@ -4,6 +4,9 @@
 """
 T100 ZK-5AD Tank Controller - Versión simplificada y moderna
 Controlador principal para T100 con ZK-5AD (TA6586) y control tank drive
+
+NOTA: El receptor ELRS devuelve valores raw sin normalización (172-1811)
+Este controlador convierte esos valores al rango -1.0 a 1.0 que espera el driver de motores.
 """
 
 import asyncio
@@ -36,6 +39,32 @@ class T100Controller:
         self.logger = logging.getLogger(__name__)
         
         print("🎮 T100 ZK-5AD Controller inicializado")
+    
+    def _raw_to_float(self, raw_value: int) -> float:
+        """
+        Convierte valor raw del ELRS a rango -1.0 a 1.0 usando rango completo.
+        
+        Args:
+            raw_value: Valor raw del ELRS (172-1811)
+            
+        Returns:
+            Valor flotante en rango -1.0 a 1.0
+            - 172 (mínimo) -> -1.0 (máximo PWM reversa)
+            - 992 (centro) -> 0.0 (parado)
+            - 1811 (máximo) -> +1.0 (máximo PWM adelante)
+        """
+        # Definir rangos del ELRS
+        min_value = 172
+        max_value = 1811
+        center = 992
+        
+        # Mapear todo el rango (172-1811) a (-1.0 a +1.0)
+        # Normalizar primero a 0.0-1.0, luego a -1.0/+1.0
+        normalized = (raw_value - min_value) / (max_value - min_value)  # 0.0 - 1.0
+        mapped = (normalized * 2.0) - 1.0  # -1.0 - +1.0
+        
+        # Limitar rango por seguridad
+        return max(-1.0, min(1.0, mapped))
     
     async def initialize(self) -> bool:
         """Inicializa todos los componentes."""
@@ -70,18 +99,23 @@ class T100Controller:
             
             try:
                 # Leer canales ELRS
-                channels = await self.elrs_receiver.read_channels()
+                channels = self.elrs_receiver.read_channels_ultra_fast()
                 
                 if channels:
-                    # Extraer controles de tank drive
-                    forward_backward = channels.get('CH2', 0.0)  # Palanca derecha vertical
-                    left_right = channels.get('CH4', 0.0)       # Palanca derecha horizontal
+                    # Extraer controles de tank drive (valores raw del ELRS)
+                    raw_forward_backward = channels.get('CH2', 992)  # Palanca derecha vertical
+                    raw_left_right = channels.get('CH4', 992)       # Palanca derecha horizontal
+                    
+                    # Convertir valores raw ELRS a rango -1.0 a 1.0 para el driver
+                    # ELRS típico: centro=992, min=172, max=1811
+                    forward_backward = self._raw_to_float(raw_forward_backward)
+                    left_right = self._raw_to_float(raw_left_right)
                     
                     # Aplicar control tank drive
                     pwm_a, pwm_b = self.motor_driver.tank_drive(
                         forward_backward, 
                         left_right, 
-                        debug=False
+                        debug=False  # Debug desactivado para funcionamiento normal
                     )
                     
                     # Actualizar tiempo del último comando
@@ -90,8 +124,9 @@ class T100Controller:
                     # Log cada 100 loops (1 segundo a 100Hz)
                     if self.loop_count % 100 == 0:
                         self.logger.info(
-                            f"FB: {forward_backward:6.3f} | LR: {left_right:6.3f} | "
-                            f"A: {pwm_a:3d} | B: {pwm_b:3d}"
+                            f"RAW CH2:{raw_forward_backward:4d} CH4:{raw_left_right:4d} | "
+                            f"CONV FB:{forward_backward:+.3f} LR:{left_right:+.3f} | "
+                            f"PWM A:{pwm_a:3d} B:{pwm_b:3d}"
                         )
                 
                 else:

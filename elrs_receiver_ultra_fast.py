@@ -309,26 +309,8 @@ class ELRSReceiverUltraFast:
                             (channel_data[byte_offset + 1] << (8 - bit_in_byte))
                         ) & 0x7FF
                     
-                    # Normalización SBUS corregida
-                    # SBUS: rango típico 172-1811, centro ~992
-                    if raw_value < 992:
-                        # Valores negativos (172-992)
-                        normalized = (raw_value - 992) / (992 - 172)  # Normalizar a -1.0 a 0.0
-                    else:
-                        # Valores positivos (992-1811)
-                        normalized = (raw_value - 992) / (1811 - 992)  # Normalizar a 0.0 a 1.0
-                    
-                    normalized = max(-1.0, min(1.0, normalized))
-                    
-                    # CORRECCIÓN ESPECÍFICA PARA CH3
-                    if ch == 2:  # CH3 (ch + 1 = 3)
-                        # CH3 puede tener el rango invertido en el transmisor
-                        # Si solo vemos valores negativos, invertir la normalización
-                        normalized = -normalized  # Invertir CH3
-                        if abs(normalized) > 0.01:  # Debug
-                            print(f"DEBUG CH3 CORREGIDO: raw={raw_value}, normalized={normalized:.3f}")
-                    
-                    channels[f'CH{ch + 1}'] = normalized
+                    # Pasar valor raw sin normalización ni inversión
+                    channels[f'CH{ch + 1}'] = raw_value
             
             self.sbus_packets += 1
             self.packets_received += 1
@@ -359,26 +341,8 @@ class ELRSReceiverUltraFast:
                         (channel_data[byte_idx + 1] << (8 - bit_offset))
                     ) & 0x7FF
                     
-                    # Normalización CRSF corregida
-                    # CRSF: rango típico 172-1811, centro ~992
-                    if raw_value < 992:
-                        # Valores negativos (172-992)
-                        normalized = (raw_value - 992) / (992 - 172)  # Normalizar a -1.0 a 0.0
-                    else:
-                        # Valores positivos (992-1811)
-                        normalized = (raw_value - 992) / (1811 - 992)  # Normalizar a 0.0 a 1.0
-                    
-                    normalized = max(-1.0, min(1.0, normalized))
-                    
-                    # CORRECCIÓN ESPECÍFICA PARA CH3
-                    if i == 2:  # CH3 (i + 1 = 3)
-                        # CH3 puede tener el rango invertido en el transmisor
-                        # Si solo vemos valores negativos, invertir la normalización
-                        normalized = -normalized  # Invertir CH3
-                        if abs(normalized) > 0.01:  # Debug
-                            print(f"DEBUG CH3 CRSF CORREGIDO: raw={raw_value}, normalized={normalized:.3f}")
-                    
-                    channels[f'CH{i + 1}'] = normalized
+                    # Pasar valor raw sin normalización ni inversión
+                    channels[f'CH{i + 1}'] = raw_value
             
             self.crsf_packets += 1
             self.packets_received += 1
@@ -439,15 +403,15 @@ async def test_ultra_fast_receiver():
                 channels = receiver.read_channels_ultra_fast()
                 
                 if channels and i % 20 == 0:  # Mostrar cada 200ms
-                    ch1 = channels.get('CH1', 0.0)
-                    ch2 = channels.get('CH2', 0.0)
-                    ch3 = channels.get('CH3', 0.0)
-                    ch4 = channels.get('CH4', 0.0)
+                    ch1 = channels.get('CH1', 0)
+                    ch2 = channels.get('CH2', 0)
+                    ch3 = channels.get('CH3', 0)
+                    ch4 = channels.get('CH4', 0)
                     
                     elapsed = time.time() - start_time
                     rate = samples / elapsed if elapsed > 0 else 0
                     
-                    print(f"[{rate:.0f}Hz] CH1:{ch1:+.2f} CH2:{ch2:+.2f} CH3:{ch3:+.2f} CH4:{ch4:+.2f}")
+                    print(f"[{rate:.0f}Hz] CH1:{ch1:4d} CH2:{ch2:4d} CH3:{ch3:4d} CH4:{ch4:4d}")
                     samples += 1
                 
                 await asyncio.sleep(0.01)  # 100Hz

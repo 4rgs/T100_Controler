@@ -49,8 +49,14 @@ FILES=(
     "zk5ad_gpio_init.py"
     "zk5ad-gpio-init.service"
     
-    # Herramientas de emergencia
+    # Herramientas de emergencia y diagnóstico
     "emergency_stop.py"
+    "update_motor_config.sh"
+    "diagnose_motor_individual.py"
+    "diagnose_pwm_channels.py"  
+    "test_tank_movement.py"
+    "test_raw_conversion.py"
+    "test_current_spike_protection.py"
     
     # Documentación
     "CABLEADO_ZK5AD.md"
@@ -63,9 +69,17 @@ for file in "${FILES[@]}"; do
     scp -o StrictHostKeyChecking=no "$file" $RPI_USER@$RPI_IP:$PROJECT_DIR/
 done
 
-# Hacer ejecutable el script de instalación
+# Hacer ejecutables los scripts
 echo "🔧 Configurando permisos..."
-ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "chmod +x $PROJECT_DIR/install.sh"
+ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "
+    chmod +x $PROJECT_DIR/install.sh
+    chmod +x $PROJECT_DIR/update_motor_config.sh
+    chmod +x $PROJECT_DIR/diagnose_motor_individual.py
+    chmod +x $PROJECT_DIR/diagnose_pwm_channels.py
+    chmod +x $PROJECT_DIR/test_tank_movement.py
+    chmod +x $PROJECT_DIR/test_current_spike_protection.py
+    chmod +x $PROJECT_DIR/test_raw_conversion.py
+"
 
 # Instalar servicio de inicialización ZK-5AD
 echo "⚙️  Instalando servicio de inicialización ZK-5AD..."
@@ -98,11 +112,17 @@ echo "✅ Despliegue completado!
    Palanca derecha HORIZONTAL: Izquierda/Derecha
    Palanca izquierda: IGNORADA
 
-🚨 HERRAMIENTAS:
-   python3 emergency_stop.py     # Parada inmediata
+🚨 HERRAMIENTAS DE DIAGNÓSTICO:
+   python3 emergency_stop.py                 # Parada inmediata
+   python3 diagnose_motor_individual.py      # Test motores individuales
+   python3 diagnose_pwm_channels.py          # Test canales PWM
+   python3 test_tank_movement.py             # Test movimientos tanque
+   python3 test_current_spike_protection.py  # Test protección picos corriente
+   python3 test_raw_conversion.py            # Test conversión valores
+   ./update_motor_config.sh                  # Actualizar configuración
    
 📚 DOCUMENTACIÓN:
-   cat CABLEADO_ZK5AD.md         # Guía de cableado completa
+   cat CABLEADO_ZK5AD.md                # Guía de cableado completa
 
 🧹 PROYECTO REFACTORIZADO:
    ✅ Solo ZK-5AD (TA6586) - Eliminado L298N obsoleto

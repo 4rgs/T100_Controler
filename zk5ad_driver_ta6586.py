@@ -42,10 +42,18 @@ class ZK5ADDriverTA6586:
         self.max_pwm = 255    # PWM máximo
         self.pwm_frequency = hw_config.pwm_frequency
         
+        # Protección contra picos de corriente
+        self.direction_change_delay = hw_config.direction_change_delay
+        self.enable_direction_protection = hw_config.enable_direction_protection
+        self.motor_a_last_direction = "stop"  # Última dirección conocida
+        self.motor_b_last_direction = "stop"  # Última dirección conocida
+        
         print("🚗 Driver ZK-5AD (TA6586) inicializado")
         print(f"   Motor A (Izq): GPIO {self.motor_a_config.in1}, {self.motor_a_config.in2}")
         print(f"   Motor B (Der): GPIO {self.motor_b_config.in1}, {self.motor_b_config.in2}")
         print(f"   PWM Frequency: {self.pwm_frequency} Hz")
+        if self.enable_direction_protection:
+            print(f"   🛡️  Protección picos corriente: {self.direction_change_delay*1000:.0f}ms")
     
     def initialize(self) -> bool:
         """Inicializa la conexión pigpio y configura los pines."""
@@ -64,6 +72,17 @@ class ZK5ADDriverTA6586:
                 try:
                     self.pi.set_PWM_frequency(motor_config.in1, self.pwm_frequency)
                     self.pi.set_PWM_frequency(motor_config.in2, self.pwm_frequency)
+
+                    try:
+                        # Aviso si la frecuencia solicitada es alta y el pin no es HW-PWM
+                        hw_pwm_pins = {12, 13, 18, 19}
+                        for g in (motor_config.in1, motor_config.in2):
+                            actual = self.pi.get_PWM_frequency(g)
+                            if self.pwm_frequency > 1000 and g not in hw_pwm_pins:
+                                print(f"⚠️  GPIO {g}: solicitada {self.pwm_frequency} Hz sin HW-PWM (actual={actual} Hz). Considera usar 12/13/18/19 para PWM de alta frecuencia.")
+                    except Exception as e:
+                        print(f"⚠️  No se pudo consultar frecuencia PWM real: {e}")
+                    
                 except Exception as e:
                     print(f"⚠️  Advertencia PWM frequency para GPIO {motor_config.in1}, {motor_config.in2}: {e}")
                 
@@ -125,7 +144,7 @@ class ZK5ADDriverTA6586:
         pwm_b = self._set_ta6586_motor(right_speed, self.motor_b_config, 'B', debug)
         
         if debug:
-            print(f"🔧 TA6586 Control: Motor A PWM={pwm_a} | Motor B PWM={pwm_b}")
+            print(f"🔧 TA6586 Control (efectivo): Motor A PWM={pwm_a} | Motor B PWM={pwm_b}")
         
         return pwm_a, pwm_b
     
@@ -146,21 +165,56 @@ class ZK5ADDriverTA6586:
         Returns:
             Valor PWM aplicado
         """
-        # Parar si velocidad es cero - TA6586: H+H = BRAKE (frenado activo)
+        # Determinar dirección nueva
         if abs(speed) < self.deadband:
-            self.pi.set_PWM_dutycycle(motor_config.in1, 255)  # HIGH
-            self.pi.set_PWM_dutycycle(motor_config.in2, 255)  # HIGH
-            
-            # Actualizar estado
-            if motor_name == 'A':
-                self.motor_a_status = TA6586MotorStatus("brake", 0.0, 255)
-            else:
-                self.motor_b_status = TA6586MotorStatus("brake", 0.0, 255)
+            new_direction = "stop"
+        elif speed > 0:
+            new_direction = "forward"
+        else:
+            new_direction = "backward"
+        
+        # Obtener última dirección conocida
+        last_direction = self.motor_a_last_direction if motor_name == 'A' else self.motor_b_last_direction
+        
+        # PROTECCIÓN CONTRA PICOS DE CORRIENTE
+        # Si hay cambio de dirección (forward<->backward), aplicar pausa de seguridad
+        if (self.enable_direction_protection and 
+            last_direction != "stop" and 
+            new_direction != "stop" and 
+            last_direction != new_direction):
             
             if debug:
-                print(f"🛑 TA6586 Motor {motor_name}: BRAKE (H+H)")
+                print(f"⚠️  Motor {motor_name}: Cambio {last_direction}->{new_direction} - Aplicando pausa {self.direction_change_delay*1000:.0f}ms")
             
-            return 255
+            # 1. Parar motor inmediatamente
+            self.pi.set_PWM_dutycycle(motor_config.in1, 255)  # BRAKE
+            self.pi.set_PWM_dutycycle(motor_config.in2, 255)  # BRAKE
+            
+            # 2. Esperar tiempo de seguridad
+            time.sleep(self.direction_change_delay)
+            
+            # 3. Continuar con nueva dirección
+            if debug:
+                print(f"✅ Motor {motor_name}: Pausa completada, aplicando nueva dirección")
+        
+        # Actualizar última dirección conocida
+        if motor_name == 'A':
+            self.motor_a_last_direction = new_direction
+        else:
+            self.motor_b_last_direction = new_direction
+        
+        # Parar si velocidad es cero - TA6586: H+H = BRAKE (frenado activo)
+        if abs(speed) < self.deadband:
+            self.pi.set_PWM_dutycycle(motor_config.in1, 255)  # HIGH (brake)
+            self.pi.set_PWM_dutycycle(motor_config.in2, 255)  # HIGH (brake)
+            # Actualizar estado (pwm_value refleja velocidad efectiva => 0)
+            if motor_name == 'A':
+                self.motor_a_status = TA6586MotorStatus("brake", 0.0, 0)
+            else:
+                self.motor_b_status = TA6586MotorStatus("brake", 0.0, 0)
+            if debug:
+                print(f"🛑 TA6586 Motor {motor_name}: BRAKE (H+H)")
+            return 0
         
         # Calcular PWM con factor de potencia
         pwm_final = int(abs(speed) * self.max_pwm * motor_config.power_factor)
@@ -215,8 +269,8 @@ class ZK5ADDriverTA6586:
             self.pi.set_PWM_dutycycle(motor_config.in1, 255)
             self.pi.set_PWM_dutycycle(motor_config.in2, 255)
         
-        self.motor_a_status = TA6586MotorStatus("brake", 0.0, 255)
-        self.motor_b_status = TA6586MotorStatus("brake", 0.0, 255)
+        self.motor_a_status = TA6586MotorStatus("brake", 0.0, 0)
+        self.motor_b_status = TA6586MotorStatus("brake", 0.0, 0)
         
         print("🛑 Motores TA6586 parados")
     

@@ -17,8 +17,8 @@ def emergency_stop_all():
     print("Aplicando freno H+H en todos los pines...")
     
     try:
-        # Pines ZK-5AD (TA6586) - configuración actual
-        zk5ad_pins = [12, 13, 18, 19]  # GPIO hardware PWM
+        # Pines ZK-5AD (TA6586) - configuración actualizada
+        zk5ad_pins = [12, 13, 16, 26]  # Motor A: 12,16 | Motor B: 13,26
         
         print("🛑 Configurando todos los pines ZK-5AD en HIGH (255)...")
         
