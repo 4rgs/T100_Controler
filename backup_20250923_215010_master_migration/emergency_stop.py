@@ -17,13 +17,13 @@ def emergency_stop_all():
     print("Aplicando freno H+H en todos los pines...")
     
     try:
-        # Pines ZK-5AD (TA6586) - configuración actualizada
-        zk5ad_pins = [12, 13, 16, 26]  # Motor A: 12,16 | Motor B: 13,26
+        # Pines del sistema completo - configuración actualizada
+        system_pins = [12, 13, 16, 26, 18, 19]  # Motores: 12,16,13,26 | Servos: 18,19
         
         print("🛑 Configurando todos los pines ZK-5AD en HIGH (255)...")
         
-        # Comando pigs para poner todos los pines en HIGH (freno H+H)
-        for pin in zk5ad_pins:
+        # Comando pigs para poner todos los pines en HIGH (freno H+H motores y centrar servos)
+        for pin in system_pins:
             result = subprocess.run(
                 ["pigs", "w", str(pin), "1"], 
                 capture_output=True, 

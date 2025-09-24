@@ -1,0 +1,45 @@
+[Unit]
+Description=T100 Camera Controller (Optimizado)
+After=pigpiod.service
+Requires=pigpiod.service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=4rgs
+Group=4rgs
+WorkingDirectory=/home/4rgs/t100
+ExecStart=/usr/bin/python3 /home/4rgs/t100/t100_camera_only.py
+Restart=always
+RestartSec=3
+
+# OPTIMIZACIONES DE PROCESO
+# Prioridad más baja para no interferir con tank drive
+Nice=5
+IOSchedulingClass=2
+IOSchedulingPriority=4
+
+# Límites de recursos para evitar interferencias
+LimitCPU=30
+LimitMEMLOCK=64M
+LimitNOFILE=256
+
+# Variables de entorno optimizadas
+Environment=PYTHONPATH=/home/4rgs/t100
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONOPTIMIZE=1
+
+# Configuración de proceso optimizada
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=5
+PrivateNetwork=false
+
+# Output reducido para menor I/O
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=t100-camera
+
+[Install]
+WantedBy=multi-user.target

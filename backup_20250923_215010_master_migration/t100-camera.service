@@ -1,0 +1,29 @@
+[Unit]
+Description=T100 Camera Controller
+After=pigpiod.service
+Requires=pigpiod.service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=4rgs
+Group=4rgs
+WorkingDirectory=/home/4rgs/t100
+ExecStart=/usr/bin/python3 /home/4rgs/t100/t100_camera_only.py
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+# Variables de entorno
+Environment=PYTHONPATH=/home/4rgs/t100
+Environment=PYTHONUNBUFFERED=1
+
+# Configuración de proceso
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

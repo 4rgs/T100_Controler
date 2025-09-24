@@ -31,7 +31,7 @@ echo
 echo "📁 Creando directorio remoto..."
 ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "mkdir -p $PROJECT_DIR"
 
-# Lista de archivos a transferir - Proyecto T100 ZK-5AD limpio
+# Lista de archivos a transferir - Proyecto T100 ZK-5AD + MG90S Servos
 FILES=(
     # Configuración
     "config.py"
@@ -45,6 +45,9 @@ FILES=(
     "zk5ad_driver_ta6586.py"
     "t100_controller.py"
     
+    # MG90S Servos Driver (NUEVO)
+    "mg90s_servo_driver.py"
+    
     # ZK-5AD GPIO Initialization
     "zk5ad_gpio_init.py"
     "zk5ad-gpio-init.service"
@@ -57,6 +60,9 @@ FILES=(
     "test_tank_movement.py"
     "test_raw_conversion.py"
     "test_current_spike_protection.py"
+    "test_full_system.py"
+    "test_servos_only.py"
+    "test_servos_quick.py"
     
     # Documentación
     "CABLEADO_ZK5AD.md"
@@ -79,6 +85,9 @@ ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "
     chmod +x $PROJECT_DIR/test_tank_movement.py
     chmod +x $PROJECT_DIR/test_current_spike_protection.py
     chmod +x $PROJECT_DIR/test_raw_conversion.py
+    chmod +x $PROJECT_DIR/test_full_system.py
+    chmod +x $PROJECT_DIR/test_servos_only.py
+    chmod +x $PROJECT_DIR/test_servos_quick.py
 "
 
 # Instalar servicio de inicialización ZK-5AD
@@ -92,7 +101,7 @@ ssh -o StrictHostKeyChecking=no $RPI_USER@$RPI_IP "
 
 echo
 echo "✅ Despliegue completado!
-🚀 T100 ZK-5AD CONTROLLER - Proyecto refactorizado y limpio
+🚀 T100 ZK-5AD + MG90S CONTROLLER - Sistema completo Tank + Cámara
 
 📋 Ejecutar en el Raspberry Pi:
 1. ssh 4rgs@192.168.1.140
@@ -102,18 +111,25 @@ echo "✅ Despliegue completado!
 🎯 CONTROLADOR PRINCIPAL:
    python3 t100_controller.py
    ✅ ZK-5AD (TA6586) Tank Drive
-   ✅ CH2 → Forward/Back, CH4 → Left/Right
-   ✅ Control con palanca derecha únicamente
+   ✅ MG90S Servos Cámara Pan/Tilt
+   ✅ Doble joystick: Tank + Cámara
    ✅ Failsafe automático
    ✅ Logging y monitoreo
 
-🎮 CONTROLES:
-   Palanca derecha VERTICAL: Adelante/Atrás
-   Palanca derecha HORIZONTAL: Izquierda/Derecha
-   Palanca izquierda: IGNORADA
+🎮 CONTROLES ELRS:
+   TANK DRIVE:
+     CH1: Rotación tank (izquierda/derecha)
+     CH2: Aceleración tank (adelante/atrás)
+   
+   CÁMARA:
+     CH3: Tilt cámara (arriba/abajo)
+     CH4: Pan cámara (izquierda/derecha)
 
 🚨 HERRAMIENTAS DE DIAGNÓSTICO:
-   python3 emergency_stop.py                 # Parada inmediata
+   python3 emergency_stop.py                 # Parada inmediata todo
+   python3 test_full_system.py               # Test completo sistema
+   python3 test_servos_quick.py              # Test rápido solo servos
+   python3 test_servos_only.py               # Test completo solo servos
    python3 diagnose_motor_individual.py      # Test motores individuales
    python3 diagnose_pwm_channels.py          # Test canales PWM
    python3 test_tank_movement.py             # Test movimientos tanque
@@ -124,11 +140,12 @@ echo "✅ Despliegue completado!
 📚 DOCUMENTACIÓN:
    cat CABLEADO_ZK5AD.md                # Guía de cableado completa
 
-🧹 PROYECTO REFACTORIZADO:
-   ✅ Solo ZK-5AD (TA6586) - Eliminado L298N obsoleto
-   ✅ Controlador único y moderno  
+🎛️  HARDWARE INTEGRADO:
+   ✅ ZK-5AD (TA6586) - Motores tank drive
+   ✅ MG90S Servos - Control cámara pan/tilt
+   ✅ Control dual independiente
    ✅ Configuración GPIO automática al boot
-   ✅ Código limpio y mantenible
-   - Solo 15 archivos esenciales
-   - Sin versiones antiguas ni código muerto
+   ✅ Código limpio y modular
+   - Driver servo MG90S completamente nuevo
+   - Sistema dual joystick funcional
    - Máxima simplicidad y rendimiento"

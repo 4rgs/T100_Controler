@@ -1,0 +1,19 @@
+[Unit]
+Description=T100 Master (ESP32 Coordinator)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+# Ajusta esta ruta al directorio del repo en la RPi
+WorkingDirectory=/home/pi/t100
+ExecStart=/usr/bin/python3 /home/pi/t100/t100_master.py
+Restart=on-failure
+RestartSec=2
+# Entorno opcional para permisos de serie
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

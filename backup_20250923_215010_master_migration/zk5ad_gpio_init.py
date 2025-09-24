@@ -10,8 +10,8 @@ import pigpio
 import time
 import sys
 
-# Pines GPIO del ZK-5AD (según config.py) - CONFIGURACIÓN ACTUALIZADA
-ZK5AD_GPIO_PINS = [12, 13, 16, 26]  # Motor A: 12,16 | Motor B: 13,26
+# Pines GPIO del sistema completo (según config.py) - CONFIGURACIÓN ACTUALIZADA
+SYSTEM_GPIO_PINS = [12, 13, 16, 26, 18, 19]  # Motores: 12,16,13,26 | Servos: 18,19
 
 def initialize_zk5ad_gpio():
     """Inicializa los GPIO del ZK-5AD en estado seguro."""
@@ -25,7 +25,7 @@ def initialize_zk5ad_gpio():
             return False
         
         # Configurar cada pin en estado seguro
-        for gpio_pin in ZK5AD_GPIO_PINS:
+        for gpio_pin in SYSTEM_GPIO_PINS:
             # Configurar como OUTPUT
             pi.set_mode(gpio_pin, pigpio.OUTPUT)
             
